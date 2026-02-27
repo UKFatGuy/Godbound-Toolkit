@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Godbound TTRPG Toolkit – Dice roller, combat tracker and character sheet for the Godbound tabletop RPG.">
+  <title>Godbound Toolkit</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Application Header & Tab Navigation
+  ════════════════════════════════════════════════════════════ -->
+  <header class="app-header">
+    <div class="app-logo">
+      ⚡ Godbound Toolkit <span>TTRPG companion</span>
+    </div>
+
+    <nav class="tab-nav" role="navigation" aria-label="Main sections">
+      <button class="tab-btn" data-tab="dice-tab"      aria-controls="dice-tab">🎲 Dice Roller</button>
+      <button class="tab-btn" data-tab="combat-tab"    aria-controls="combat-tab">⚔️ Combat</button>
+      <button class="tab-btn" data-tab="character-tab" aria-controls="character-tab">📜 Character</button>
+    </nav>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Main Content – Tabs
+  ════════════════════════════════════════════════════════════ -->
+  <main>
+
+    <!-- ── Dice Roller Tab ──────────────────────────────── -->
+    <section id="dice-tab" class="tab-content" role="tabpanel" aria-label="Dice Roller">
+      <!-- Content injected by GoDice.render() -->
+    </section>
+
+    <!-- ── Combat Tracker Tab ───────────────────────────── -->
+    <section id="combat-tab" class="tab-content" role="tabpanel" aria-label="Combat Tracker">
+      <!-- Content injected by GoCombat.render() -->
+    </section>
+
+    <!-- ── Character Sheet Tab ──────────────────────────── -->
+    <section id="character-tab" class="tab-content" role="tabpanel" aria-label="Character Sheet">
+      <!-- Content injected by GoCharacter.render() -->
+    </section>
+
+  </main>
+
+  <!-- Toast notification container (injected by GoApp.toast) -->
+  <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Scripts – loaded in dependency order
+  ════════════════════════════════════════════════════════════ -->
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/dice.js"></script>
+  <script src="js/combat.js"></script>
+  <script src="js/character.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
