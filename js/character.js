@@ -569,7 +569,7 @@ const GoCharacter = {
 
     document.querySelectorAll('[data-field]').forEach(el => {
       const field  = el.dataset.field;
-      const value  = el.tagName === 'TEXTAREA' ? el.value : el.value;
+      const value  = el.value;
 
       if (field.startsWith('attr-')) {
         const attr = field.slice(5);

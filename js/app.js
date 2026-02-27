@@ -31,11 +31,11 @@ const GoApp = {
     document.querySelectorAll('.tab-content').forEach(section => {
       section.classList.toggle('active', section.id === tabId);
     });
-    localStorage.setItem('gofbound_active_tab', tabId);
+    localStorage.setItem('godbound_active_tab', tabId);
   },
 
   _restoreActiveTab() {
-    const saved = localStorage.getItem('gofbound_active_tab') || 'dice-tab';
+    const saved = localStorage.getItem('godbound_active_tab') || 'dice-tab';
     this._switchTab(saved);
   },
 

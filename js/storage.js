@@ -8,10 +8,10 @@
 const GoStorage = {
 
   KEYS: {
-    CHARACTERS:       'gofbound_characters',
-    ACTIVE_CHARACTER: 'gofbound_active_char',
-    COMBAT:           'gofbound_combat',
-    DICE_HISTORY:     'gofbound_dice_history'
+    CHARACTERS:       'godbound_characters',
+    ACTIVE_CHARACTER: 'godbound_active_char',
+    COMBAT:           'godbound_combat',
+    DICE_HISTORY:     'godbound_dice_history'
   },
 
   save(key, data) {
