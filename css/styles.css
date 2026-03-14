@@ -627,6 +627,12 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 .attr-name  { color: var(--text-secondary); font-size: .7rem; font-weight: 600; letter-spacing: .08em; }
 
+.attr-sub-label {
+  font-size: .65rem;
+  color: var(--text-muted);
+  letter-spacing: .05em;
+}
+
 .attr-score {
   text-align: center;
   width: 3rem;
@@ -638,6 +644,13 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   padding: 0;
 }
 .attr-score:focus { border-bottom: 1px solid var(--gold); }
+
+.attr-bonus-input {
+  text-align: center;
+  width: 2.5rem;
+  padding: .1rem .2rem;
+  font-size: .82rem;
+}
 
 .attr-mod  { font-size: .8rem; font-weight: 600; }
 .mod-pos   { color: var(--green-light); }

@@ -21,6 +21,7 @@ const GoCharacter = {
       background: '',
 
       attributes: { str: 10, int: 10, wis: 10, dex: 10, con: 10, cha: 10 },
+      attrBonuses: { str: 0,  int: 0,  wis: 0,  dex: 0,  con: 0,  cha: 0  },
 
       hp:         { max: 8, current: 8 },
       ac:         10,
@@ -180,13 +181,17 @@ const GoCharacter = {
         <div class="attr-grid">
           ${['str','dex','con','int','wis','cha'].map(attr => {
             const score = c.attributes[attr];
-            const mod   = GoUtils.getAttrMod(score);
+            const bonus = (c.attrBonuses?.[attr] ?? 0);
+            const mod   = GoUtils.getAttrMod(score) + bonus;
             return `
               <div class="attr-block">
                 <div class="attr-name">${attr.toUpperCase()}</div>
                 <input type="number" class="attr-score" data-field="attr-${attr}"
-                  value="${score}" min="3" max="18" aria-label="${attr}">
-                <div class="attr-mod ${mod >= 0 ? 'mod-pos' : 'mod-neg'}">${GoUtils.formatMod(mod)}</div>
+                  value="${score}" min="3" max="19" aria-label="${attr} score">
+                <div class="attr-sub-label">Bonus</div>
+                <input type="number" class="attr-bonus-input" data-field="bonus-${attr}"
+                  value="${bonus}" aria-label="${attr} bonus">
+                <div class="attr-mod ${mod >= 0 ? 'mod-pos' : 'mod-neg'}" id="attr-mod-${attr}">${GoUtils.formatMod(mod)}</div>
               </div>`;
           }).join('')}
         </div>
@@ -443,6 +448,20 @@ const GoCharacter = {
     this._attachEquipEvents();
   },
 
+  /* ─── Live attribute modifier update ───────────────────────────── */
+
+  _updateAttrMod(attr) {
+    const scoreEl = document.querySelector(`[data-field="attr-${attr}"]`);
+    const bonusEl = document.querySelector(`[data-field="bonus-${attr}"]`);
+    const modEl   = document.getElementById(`attr-mod-${attr}`);
+    if (!scoreEl || !bonusEl || !modEl) return;
+    const score = parseInt(scoreEl.value, 10) || 10;
+    const bonus = parseInt(bonusEl.value, 10) || 0;
+    const mod   = GoUtils.getAttrMod(score) + bonus;
+    modEl.textContent = GoUtils.formatMod(mod);
+    modEl.className   = `attr-mod ${mod >= 0 ? 'mod-pos' : 'mod-neg'}`;
+  },
+
   /* ─── Event binding ─────────────────────────────────────────────── */
 
   _attachCharEvents() {
@@ -473,6 +492,14 @@ const GoCharacter = {
         document.getElementById('add-word-custom').value = '';
         document.getElementById('add-word-custom').style.display = 'none';
       }
+    });
+
+    /* Live attribute modifier recalculation */
+    ['str','dex','con','int','wis','cha'].forEach(attr => {
+      document.querySelector(`[data-field="attr-${attr}"]`)
+        ?.addEventListener('input', () => this._updateAttrMod(attr));
+      document.querySelector(`[data-field="bonus-${attr}"]`)
+        ?.addEventListener('input', () => this._updateAttrMod(attr));
     });
   },
 
@@ -574,6 +601,10 @@ const GoCharacter = {
       if (field.startsWith('attr-')) {
         const attr = field.slice(5);
         c.attributes[attr] = parseInt(value, 10) || 10;
+      } else if (field.startsWith('bonus-')) {
+        const attr = field.slice(6);
+        if (!c.attrBonuses) c.attrBonuses = {};
+        c.attrBonuses[attr] = parseInt(value, 10) || 0;
       } else if (fieldMap[field]) {
         fieldMap[field](value);
       }
@@ -583,10 +614,12 @@ const GoCharacter = {
 
     /* Refresh fray dice display and attr mods */
     document.querySelectorAll('.attr-block').forEach(block => {
-      const inp  = block.querySelector('[data-field]');
+      const inp  = block.querySelector('[data-field^="attr-"]');
       if (!inp) return;
       const attr = inp.dataset.field.slice(5);
-      const mod  = GoUtils.getAttrMod(c.attributes[attr]);
+      const bonusInp = block.querySelector('[data-field^="bonus-"]');
+      const bonus = bonusInp ? (parseInt(bonusInp.value, 10) || 0) : 0;
+      const mod  = GoUtils.getAttrMod(c.attributes[attr]) + bonus;
       const modEl = block.querySelector('.attr-mod');
       if (modEl) {
         modEl.textContent = GoUtils.formatMod(mod);
