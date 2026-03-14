@@ -4,10 +4,10 @@
 
 /* ─── Custom Properties ─────────────────────────────────── */
 :root {
-  --bg-base:      #0f0e17;
-  --bg-surface:   #1a1828;
-  --bg-card:      #221f36;
-  --bg-raised:    #2c2847;
+  --bg-base:      #1e1c33;
+  --bg-surface:   #272540;
+  --bg-card:      #2e2b4d;
+  --bg-raised:    #3a3761;
 
   --gold:         #c9a84c;
   --gold-light:   #e8c97a;
@@ -21,11 +21,11 @@
   --blue:         #2980b9;
   --blue-light:   #3498db;
 
-  --text-primary:   #e8e0d0;
-  --text-secondary: #9d97b0;
-  --text-muted:     #5e5878;
+  --text-primary:   #f0e8d8;
+  --text-secondary: #bbb5d0;
+  --text-muted:     #8a8498;
 
-  --border:         #3a3558;
+  --border:         #524d73;
   --border-focus:   var(--gold);
 
   --radius-sm:  4px;
@@ -39,7 +39,7 @@
 /* ─── Reset & Base ──────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 16px; scroll-behavior: smooth; }
+html { font-size: 17px; scroll-behavior: smooth; }
 
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -206,7 +206,7 @@ textarea:focus { border-color: var(--border-focus); }
   display: flex;
   flex-direction: column;
   gap: .25rem;
-  font-size: .8rem;
+  font-size: .85rem;
   color: var(--text-secondary);
 }
 
@@ -625,10 +625,10 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   text-align: center;
 }
 
-.attr-name  { color: var(--text-secondary); font-size: .7rem; font-weight: 600; letter-spacing: .08em; }
+.attr-name  { color: var(--text-secondary); font-size: .78rem; font-weight: 600; letter-spacing: .08em; }
 
 .attr-sub-label {
-  font-size: .65rem;
+  font-size: .72rem;
   color: var(--text-muted);
   letter-spacing: .05em;
 }
@@ -636,7 +636,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .attr-score {
   text-align: center;
   width: 3rem;
-  font-size: 1.3rem;
+  font-size: 1.45rem;
   font-weight: 700;
   border: none;
   background: transparent;
@@ -649,10 +649,10 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   text-align: center;
   width: 2.5rem;
   padding: .1rem .2rem;
-  font-size: .82rem;
+  font-size: .88rem;
 }
 
-.attr-mod  { font-size: .8rem; font-weight: 600; }
+.attr-mod  { font-size: .85rem; font-weight: 600; }
 .mod-pos   { color: var(--green-light); }
 .mod-neg   { color: var(--red-light); }
 
