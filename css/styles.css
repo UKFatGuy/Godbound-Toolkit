@@ -4,10 +4,10 @@
 
 /* ─── Custom Properties ─────────────────────────────────── */
 :root {
-  --bg-base:      #1e1c33;
-  --bg-surface:   #272540;
-  --bg-card:      #2e2b4d;
-  --bg-raised:    #3a3761;
+  --bg-base:      #1a083f;
+  --bg-surface:   #6727ce7c;
+  --bg-card:      #080227;
+  --bg-raised:    #150d2500;
 
   --gold:         #c9a84c;
   --gold-light:   #e8c97a;
@@ -39,7 +39,7 @@
 /* ─── Reset & Base ──────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 17px; scroll-behavior: smooth; }
+html { font-size: 25.5px; scroll-behavior: smooth; }
 
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -170,6 +170,7 @@ textarea {
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: .9rem;
+  text-align: center;
   outline: none;
   transition: border-color .2s;
 }
@@ -201,6 +202,12 @@ textarea:focus { border-color: var(--border-focus); }
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: .75rem;
 }
+
+/* Overview layout tweaks */
+.overview-level { display: flex; justify-content: center; }
+.fact-row { display: flex; gap: .75rem; width: 100%; }
+.fact-field { flex: 1; }
+.fact-field .notes-area { width: 100%; }
 
 .form-label {
   display: flex;
@@ -625,6 +632,12 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   text-align: center;
 }
 
+.attr-row {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+}
+
 .attr-name  { color: var(--text-secondary); font-size: .78rem; font-weight: 600; letter-spacing: .08em; }
 
 .attr-sub-label {
@@ -652,7 +665,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   font-size: .88rem;
 }
 
-.attr-mod  { font-size: .85rem; font-weight: 600; }
+.attr-mod  { font-size: 1.05rem; font-weight: 700; line-height: 1; }
 .mod-pos   { color: var(--green-light); }
 .mod-neg   { color: var(--red-light); }
 

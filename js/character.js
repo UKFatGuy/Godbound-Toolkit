@@ -19,11 +19,14 @@ const GoCharacter = {
       name,
       level:      1,
       background: '',
+      origin:     '',
+      career:     '',
+      relationship: '',
 
       attributes: { str: 10, int: 10, wis: 10, dex: 10, con: 10, cha: 10 },
       attrBonuses: { str: 0,  int: 0,  wis: 0,  dex: 0,  con: 0,  cha: 0  },
 
-      hp:         { max: 8, current: 8 },
+      hp:         { max: 8, current: 8, bonus: 0 },
       ac:         10,
       attackBonus: 2,
 
@@ -163,15 +166,24 @@ const GoCharacter = {
       <div class="card">
         <h2 class="card-title">Overview</h2>
         <div class="form-grid">
-          <label class="form-label">Name
-            <input type="text" class="input-main" data-field="name" value="${this._esc(c.name)}">
-          </label>
-          <label class="form-label">Level
-            <input type="number" class="input-sm" data-field="level" value="${c.level}" min="1" max="10">
-          </label>
-          <label class="form-label col-span-2">Background
-            <input type="text" class="input-main" data-field="background" value="${this._esc(c.background)}" placeholder="Former soldier, hedge-wizard…">
-          </label>
+          <div class="overview-level col-span-2">
+            <label class="form-label">Level
+              <input type="number" class="input-sm" data-field="level" value="${c.level}" min="1" max="10">
+            </label>
+          </div>
+
+          <div class="fact-row col-span-2">
+            <label class="form-label fact-field">Origin
+              <textarea class="notes-area" data-field="origin" rows="3" placeholder="Place of birth, family, short origin…">${this._esc(c.origin)}</textarea>
+            </label>
+            <label class="form-label fact-field">Career
+              <textarea class="notes-area" data-field="career" rows="3" placeholder="Profession, training, notable roles…">${this._esc(c.career)}</textarea>
+            </label>
+            <label class="form-label fact-field">Relationship
+              <textarea class="notes-area" data-field="relationship" rows="3" placeholder="Key relationships or allies…">${this._esc(c.relationship)}</textarea>
+            </label>
+          </div>
+
         </div>
       </div>
 
@@ -186,11 +198,13 @@ const GoCharacter = {
             return `
               <div class="attr-block">
                 <div class="attr-name">${attr.toUpperCase()}</div>
-                <input type="number" class="attr-score" data-field="attr-${attr}"
-                  value="${score}" min="3" max="19" aria-label="${attr} score">
+                <div class="attr-row">
+                  <input type="number" class="attr-score" data-field="attr-${attr}"
+                    value="${score}" min="3" max="19" aria-label="${attr} score">
+                  <input type="number" class="attr-bonus-input" data-field="bonus-${attr}"
+                    value="${bonus}" aria-label="${attr} bonus">
+                </div>
                 <div class="attr-sub-label">Bonus</div>
-                <input type="number" class="attr-bonus-input" data-field="bonus-${attr}"
-                  value="${bonus}" aria-label="${attr} bonus">
                 <div class="attr-mod ${mod >= 0 ? 'mod-pos' : 'mod-neg'}" id="attr-mod-${attr}">${GoUtils.formatMod(mod)}</div>
               </div>`;
           }).join('')}
@@ -217,13 +231,13 @@ const GoCharacter = {
       <div class="card">
         <h2 class="card-title">Combat Stats</h2>
         <div class="form-grid">
-          <label class="form-label">HP (Current)
-            <input type="number" class="input-sm" data-field="hp-current"
-              value="${c.hp.current}" min="0">
-          </label>
           <label class="form-label">HP (Max)
             <input type="number" class="input-sm" data-field="hp-max"
-              value="${c.hp.max}" min="1">
+              value="${c.hp.max}" min="1" readonly>
+          </label>
+          <label class="form-label">HP Bonus
+            <input type="number" class="input-sm" data-field="hp-max-bonus"
+              value="${c.hp.bonus || 0}" title="Flat bonus added to max HP">
           </label>
           <label class="form-label">Armour Class
             <input type="number" class="input-sm" data-field="ac"
@@ -460,6 +474,80 @@ const GoCharacter = {
     const mod   = GoUtils.getAttrMod(score) + bonus;
     modEl.textContent = GoUtils.formatMod(mod);
     modEl.className   = `attr-mod ${mod >= 0 ? 'mod-pos' : 'mod-neg'}`;
+    this._updateSaves();
+  },
+
+  _computeFinalMod(attr) {
+    const scoreEl = document.querySelector(`[data-field="attr-${attr}"]`);
+    const bonusEl = document.querySelector(`[data-field="bonus-${attr}"]`);
+    const score = scoreEl ? (parseInt(scoreEl.value, 10) || 10) : (this.char.attributes[attr] || 10);
+    const bonus = bonusEl ? (parseInt(bonusEl.value, 10) || 0) : ((this.char.attrBonuses && this.char.attrBonuses[attr]) || 0);
+    return GoUtils.getAttrMod(score) + bonus;
+  },
+
+  _computeHPMax() {
+    const levelEl = document.querySelector('[data-field="level"]');
+    const level = levelEl ? (parseInt(levelEl.value, 10) || this.char.level || 1) : (this.char.level || 1);
+    const conMod = this._computeFinalMod('con');
+    const bonusEl = document.querySelector('[data-field="hp-max-bonus"]');
+    const bonus = bonusEl ? (parseInt(bonusEl.value, 10) || 0) : (this.char.hp && this.char.hp.bonus ? this.char.hp.bonus : 0);
+
+    const base = 8 + conMod; // level 1
+    const extraLevels = Math.max(0, level - 1);
+    const perLevel = 4 + Math.ceil(conMod / 2);
+    const total = base + extraLevels * perLevel + bonus;
+    return Math.max(1, Math.floor(total));
+  },
+
+  _updateHPMax() {
+    const max = this._computeHPMax();
+    const maxEl = document.querySelector('[data-field="hp-max"]');
+    const curEl = document.querySelector('[data-field="hp-current"]');
+    if (maxEl) maxEl.value = max;
+    if (!this.char.hp) this.char.hp = { max, current: max, bonus: 0 };
+    this.char.hp.max = max;
+    // clamp current HP to max
+    if (curEl) {
+      const cur = parseInt(curEl.value, 10) || 0;
+      if (cur > max) { curEl.value = max; this.char.hp.current = max; }
+    }
+  },
+
+  _computeFinalMod(attr) {
+    const scoreEl = document.querySelector(`[data-field="attr-${attr}"]`);
+    const bonusEl = document.querySelector(`[data-field="bonus-${attr}"]`);
+    const score = scoreEl ? (parseInt(scoreEl.value, 10) || 10) : (this.char.attributes[attr] || 10);
+    const bonus = bonusEl ? (parseInt(bonusEl.value, 10) || 0) : ((this.char.attrBonuses && this.char.attrBonuses[attr]) || 0);
+    return GoUtils.getAttrMod(score) + bonus;
+  },
+
+  _updateSaves() {
+    const levelEl = document.querySelector('[data-field="level"]');
+    const level = levelEl ? (parseInt(levelEl.value, 10) || this.char.level || 1) : (this.char.level || 1);
+
+    const hardMod = Math.max(this._computeFinalMod('str'), this._computeFinalMod('con'));
+    const evaMod  = Math.max(this._computeFinalMod('dex'), this._computeFinalMod('int'));
+    const spiMod  = Math.max(this._computeFinalMod('wis'), this._computeFinalMod('cha'));
+
+    const hard = 16 - level - hardMod;
+    const eva  = 16 - level - evaMod;
+    const spi  = 16 - level - spiMod;
+
+    const hardEl = document.querySelector('[data-field="save-hardiness"]');
+    const evaEl  = document.querySelector('[data-field="save-evasion"]');
+    const spiEl  = document.querySelector('[data-field="save-spirit"]');
+
+    if (hardEl) { hardEl.value = hard; }
+    if (evaEl)  { evaEl.value  = eva; }
+    if (spiEl)  { spiEl.value  = spi; }
+
+    if (this.char && this.char.saves) {
+      this.char.saves.hardiness = hard;
+      this.char.saves.evasion   = eva;
+      this.char.saves.spirit    = spi;
+    }
+    // also update HP when saves/attributes change
+    this._updateHPMax();
   },
 
   /* ─── Event binding ─────────────────────────────────────────────── */
@@ -501,6 +589,14 @@ const GoCharacter = {
       document.querySelector(`[data-field="bonus-${attr}"]`)
         ?.addEventListener('input', () => this._updateAttrMod(attr));
     });
+
+    /* Recalculate saves when level changes */
+    document.querySelector('[data-field="level"]')
+      ?.addEventListener('input', () => this._updateSaves());
+
+    /* Recalculate HP when HP bonus changes */
+    document.querySelector('[data-field="hp-max-bonus"]')
+      ?.addEventListener('input', () => { this._updateHPMax(); });
   },
 
   _attachWordEvents() {
@@ -543,7 +639,8 @@ const GoCharacter = {
   },
 
   _attachEquipEvents() {
-    document.getElementById('add-weapon-btn')?.addEventListener('click', () => this.addWeapon());
+        this._updateSaves();
+        this._updateHPMax();
     document.getElementById('add-armor-btn')?.addEventListener('click',  () => this.addArmor());
     document.getElementById('add-equip-btn')?.addEventListener('click',  () => this.addEquipItem());
 
@@ -578,8 +675,12 @@ const GoCharacter = {
       'name':             v => c.name              = v,
       'level':            v => { c.level = parseInt(v,10)||1; },
       'background':       v => c.background        = v,
+      'origin':           v => c.origin            = v,
+      'career':           v => c.career            = v,
+      'relationship':     v => c.relationship      = v,
       'hp-current':       v => c.hp.current        = parseInt(v,10)||0,
       'hp-max':           v => c.hp.max            = parseInt(v,10)||1,
+      'hp-max-bonus':     v => { if (!c.hp) c.hp = {}; c.hp.bonus = parseInt(v,10)||0; },
       'ac':               v => c.ac                = parseInt(v,10)||10,
       'attack-bonus':     v => c.attackBonus       = parseInt(v,10)||0,
       'save-hardiness':   v => c.saves.hardiness   = parseInt(v,10)||15,
@@ -627,7 +728,13 @@ const GoCharacter = {
       }
     });
 
+    /* Ensure saves are recalculated to match initial values */
+    this._updateSaves();
+
     const frayEl = document.querySelector('[data-field="level"]');
+
+      /* Ensure HP max is calculated after rendering */
+      this._updateHPMax();
     if (frayEl) {
       const badge = document.querySelector('.fray-badge');
       if (badge) badge.textContent = GoUtils.getFrayDice(c.level);
