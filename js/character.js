@@ -243,13 +243,12 @@ const GoCharacter = {
             </label>
           </div>
           <p class="level-facts-note">Add a new Fact related to their adventures or deeds every level</p>
-          <div class="level-facts-grid">
+          <div class="fact-row" id="level-facts-container">
             ${[2,3,4,5,6,7,8,9,10].map(lvl => `
-              <label class="form-label level-fact-item">
-                <span class="level-fact-num">${lvl}</span>
-                <input type="text" class="input-main" data-field="level-fact-${lvl}"
-                  value="${this._esc((c.levelFacts || {})[lvl] || '')}"
-                  placeholder="Level ${lvl} fact…">
+              <label class="form-label fact-field" data-level-fact-row="${lvl}"${lvl > (c.level || 1) ? ' style="display:none"' : ''}>
+                Level ${lvl} Fact
+                <textarea class="notes-area" data-field="level-fact-${lvl}" rows="3"
+                  placeholder="A Fact related to their adventures or deeds at level ${lvl}.">${this._esc((c.levelFacts || {})[lvl] || '')}</textarea>
               </label>`).join('')}
           </div>
         </div>
@@ -911,6 +910,16 @@ const GoCharacter = {
     this._updateHPMax();
   },
 
+  _updateLevelFacts() {
+    const levelEl = document.querySelector('[data-field="level"]');
+    const parsed = levelEl ? parseInt(levelEl.value, 10) : NaN;
+    const level = !isNaN(parsed) ? parsed : (this.char.level || 1);
+    document.querySelectorAll('[data-level-fact-row]').forEach(el => {
+      const factLevel = parseInt(el.dataset.levelFactRow, 10);
+      el.style.display = factLevel <= level ? '' : 'none';
+    });
+  },
+
   /* ─── Event binding ─────────────────────────────────────────────── */
 
   _attachCharEvents() {
@@ -953,7 +962,7 @@ const GoCharacter = {
 
     /* Recalculate saves when level changes */
     document.querySelector('[data-field="level"]')
-      ?.addEventListener('input', () => this._updateSaves());
+      ?.addEventListener('input', () => { this._updateSaves(); this._updateLevelFacts(); });
 
     /* Recalculate HP when HP bonus changes */
     document.querySelector('[data-field="hp-max-bonus"]')
