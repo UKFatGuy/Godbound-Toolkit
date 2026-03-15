@@ -112,5 +112,10 @@ const GoUtils = {
     'Health','Journeying','Knowledge','Luck','Making','Might','Night',
     'Passion','Sea','Sky','Sorcery','Sun','Sword','Time','Truth',
     'Valor','Wealth','Wyrd','(Custom)'
-  ]
+  ],
+
+  /** Escape a string for safe insertion into HTML attribute values or text. */
+  escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
 };

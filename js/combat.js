@@ -174,6 +174,22 @@ const GoCombat = {
 
   _find(id) { return this.state.combatants.find(c => c.id === id) || null; },
 
+  _esc(str) {
+    return GoUtils.escHtml(str);
+  },
+
+  /** Populate the stock-enemy dropdown from the Data Editor templates. */
+  populateStockEnemyDropdown() {
+    const sel = document.getElementById('c-stock-select');
+    if (!sel) return;
+    const enemies = (typeof GoDataEditor !== 'undefined' && GoDataEditor.data)
+      ? (GoDataEditor.data.enemies || []) : [];
+    sel.innerHTML = `<option value="">— select —</option>` +
+      enemies.map(e =>
+        `<option value="${this._esc(e.id)}">${this._esc(e.name)} (HP&nbsp;${e.hp}, AC&nbsp;${e.ac})</option>`
+      ).join('');
+  },
+
   /* ─── Render ────────────────────────────────────────────────────── */
 
   render() {
@@ -202,6 +218,13 @@ const GoCombat = {
       <!-- Add Combatant Form -->
       <div class="card">
         <h2 class="card-title">Add Combatant</h2>
+        <div class="stock-enemy-row">
+          <label class="stock-enemy-label">Stock Enemy:</label>
+          <select id="c-stock-select" class="input-main" aria-label="Load a stock enemy template"
+            title="Select a saved enemy to pre-fill the form below">
+            <option value="">— select —</option>
+          </select>
+        </div>
         <div class="add-combatant-form">
           <input  id="c-name"  type="text"   class="input-main" placeholder="Name">
           <input  id="c-init"  type="number" class="input-sm"   placeholder="Initiative" title="Initiative">
@@ -220,6 +243,7 @@ const GoCombat = {
     `;
 
     this._attachCombatEvents();
+    this.populateStockEnemyDropdown();
     this._renderCombatants();
     this._updateControls();
   },
@@ -342,6 +366,26 @@ const GoCombat = {
   /* ─── Event binding ─────────────────────────────────────────────── */
 
   _attachCombatEvents() {
+    /* Stock enemy dropdown – pre-fill the form */
+    document.getElementById('c-stock-select')?.addEventListener('change', e => {
+      const enemies = (typeof GoDataEditor !== 'undefined' && GoDataEditor.data)
+        ? (GoDataEditor.data.enemies || []) : [];
+      const enemy = enemies.find(en => en.id === e.target.value);
+      if (!enemy) return;
+      const nameEl   = document.getElementById('c-name');
+      const hpEl     = document.getElementById('c-hp');
+      const acEl     = document.getElementById('c-ac');
+      const effortEl = document.getElementById('c-effort');
+      const isPcEl   = document.getElementById('c-ispc');
+      if (nameEl)   nameEl.value   = enemy.name;
+      if (hpEl)     hpEl.value     = enemy.hp;
+      if (acEl)     acEl.value     = enemy.ac;
+      if (effortEl) effortEl.value = 0;
+      if (isPcEl)   isPcEl.checked = false;
+      e.target.value = '';   /* reset dropdown so the same enemy can be picked again */
+      if (nameEl) nameEl.focus();
+    });
+
     document.getElementById('add-combatant-btn')?.addEventListener('click', () => {
       const name = document.getElementById('c-name').value.trim();
       if (!name) { GoApp.toast('Combatant needs a name', 'error'); return; }
