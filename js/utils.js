@@ -71,6 +71,18 @@ const GoUtils = {
   },
 
   /**
+   * Returns fray dice display notation including optional bonus dice.
+   * @param {number} level - Character level (1–30).
+   * @param {string} bonusDice - Bonus dice notation (e.g. '1d6'), or empty string for none.
+   * @returns {string} Combined notation, e.g. '1d6 + 1d8', or base notation when no bonus.
+   */
+  getFrayDiceDisplay(level, bonusDice) {
+    const base = this.getFrayDice(level);
+    if (!bonusDice) return base;
+    return `${base} + ${bonusDice}`;
+  },
+
+  /**
    * Base saving throw target by level.
    * Godbound saves start at 15 and improve by 1 every 2 levels.
    */

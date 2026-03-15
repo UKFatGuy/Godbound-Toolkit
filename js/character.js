@@ -36,6 +36,7 @@ const GoCharacter = {
       defenseAttr:  'dex',
       ac:            9,
       attackBonus: 2,
+      frayBonusDice: '',   /* extra dice added to fray roll, e.g. '1d6'; empty = none */
 
       saves: { hardiness: 15, evasion: 15, spirit: 15 },
 
@@ -404,8 +405,17 @@ const GoCharacter = {
           </label>
           <div class="form-label">
             Fray Die
-            <span class="fray-badge">${GoUtils.getFrayDice(c.level)}</span>
+            <span class="fray-badge">${GoUtils.getFrayDiceDisplay(c.level, c.frayBonusDice)}</span>
           </div>
+          <label class="form-label">
+            Bonus Fray Dice
+            <select class="input-sm" data-field="fray-bonus-dice">
+              <option value="" ${!c.frayBonusDice ? 'selected' : ''}>None</option>
+              ${['1d4','1d6','1d8','1d10','1d12'].map(d =>
+                `<option value="${d}" ${c.frayBonusDice === d ? 'selected' : ''}>${d}</option>`
+              ).join('')}
+            </select>
+          </label>
           <div class="form-label">
             Unarmed
             <span class="combat-info-static">1d2 + STR mod</span>
@@ -1183,6 +1193,7 @@ const GoCharacter = {
       'shield-or-cloak':  v => c.shieldOrCloak     = (v === 'yes'),
       'defense-attr':     v => c.defenseAttr       = v,
       'attack-bonus':     v => c.attackBonus       = parseInt(v,10)||0,
+      'fray-bonus-dice':  v => c.frayBonusDice      = v,
       'save-hardiness':   v => c.saves.hardiness   = parseInt(v,10)||15,
       'save-evasion':     v => c.saves.evasion     = parseInt(v,10)||15,
       'save-spirit':      v => c.saves.spirit      = parseInt(v,10)||15,
@@ -1261,7 +1272,7 @@ const GoCharacter = {
       this._updateHPMax();
     if (frayEl) {
       const badge = document.querySelector('.fray-badge');
-      if (badge) badge.textContent = GoUtils.getFrayDice(c.level);
+      if (badge) badge.textContent = GoUtils.getFrayDiceDisplay(c.level, c.frayBonusDice);
     }
 
     /* Ensure AC is recalculated after collecting all values */
