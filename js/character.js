@@ -57,6 +57,7 @@ const GoCharacter = {
       weapons:   [],
       armor:     [],
       equipment: [],
+      artifacts: [],
       notes:     ''
     };
   },
@@ -154,10 +155,12 @@ const GoCharacter = {
   addWeapon()    { this.char.weapons.push({ id: GoUtils.uid(), name: 'Weapon', damage: '1d8', attackMod: 0, notes: '' }); this._save(); this._renderEquipment(); },
   addArmor()     { this.char.armor.push({ id: GoUtils.uid(), name: 'Armour', acBonus: 0, notes: '' }); this._save(); this._renderEquipment(); },
   addEquipItem() { this.char.equipment.push({ id: GoUtils.uid(), name: 'Item', notes: '' }); this._save(); this._renderEquipment(); },
+  addArtifact()  { if (!this.char.artifacts) this.char.artifacts = []; this.char.artifacts.push({ id: GoUtils.uid(), name: 'Artifact', effort: 0, creationCost: 0, notes: '' }); this._save(); this._renderEquipment(); },
 
   removeWeapon(id)    { this.char.weapons   = this.char.weapons.filter(x => x.id !== id); this._save(); this._renderEquipment(); },
   removeArmor(id)     { this.char.armor     = this.char.armor.filter(x => x.id !== id);   this._save(); this._renderEquipment(); },
   removeEquipItem(id) { this.char.equipment = this.char.equipment.filter(x => x.id !== id); this._save(); this._renderEquipment(); },
+  removeArtifact(id)  { this.char.artifacts = (this.char.artifacts || []).filter(x => x.id !== id); this._save(); this._renderEquipment(); },
 
   addShrine()       { if (!this.char.shrines) this.char.shrines = []; this.char.shrines.push({ id: GoUtils.uid(), level: this.char.level, place: '' }); this._save(); this._renderShrines(); },
   removeShrine(id)  { this.char.shrines = (this.char.shrines || []).filter(x => x.id !== id); this._save(); this._renderShrines(); },
@@ -823,6 +826,32 @@ const GoCharacter = {
             </tbody>
           </table>` : '<p class="empty-msg-sm">No other equipment.</p>'}
       </div>
+
+      <!-- Artifacts -->
+      <div class="equip-section">
+        <div class="equip-section-header">
+          <h3>Artifacts</h3>
+          <button id="add-artifact-btn" class="btn-ghost">+ Add</button>
+        </div>
+        ${(c.artifacts || []).length ? `
+          <table class="equip-table">
+            <thead><tr><th>Name</th><th>Effort</th><th>Creation Cost</th><th>Notes</th><th></th></tr></thead>
+            <tbody>
+              ${(c.artifacts || []).map(a => `
+                <tr data-equip-id="${a.id}" data-equip-type="artifact">
+                  <td><input type="text" class="input-main equip-field" value="${this._esc(a.name)}"
+                    data-id="${a.id}" data-type="artifact" data-f="name" aria-label="Artifact name"></td>
+                  <td><input type="number" class="input-sm equip-field" value="${a.effort}"
+                    data-id="${a.id}" data-type="artifact" data-f="effort" aria-label="Effort cost"></td>
+                  <td><input type="number" class="input-sm equip-field" value="${a.creationCost}"
+                    data-id="${a.id}" data-type="artifact" data-f="creationCost" aria-label="Creation cost"></td>
+                  <td><input type="text" class="input-main equip-field" value="${this._esc(a.notes)}"
+                    data-id="${a.id}" data-type="artifact" data-f="notes" placeholder="Abilities & notes" aria-label="Notes"></td>
+                  <td><button class="btn-icon remove-equip-btn" data-id="${a.id}" data-type="artifact">✕</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>` : '<p class="empty-msg-sm">No artifacts.</p>'}
+      </div>
     `;
 
     this._attachEquipEvents();
@@ -1106,19 +1135,22 @@ const GoCharacter = {
     document.getElementById('add-weapon-btn')?.addEventListener('click', () => this.addWeapon());
     document.getElementById('add-armor-btn')?.addEventListener('click',  () => this.addArmor());
     document.getElementById('add-equip-btn')?.addEventListener('click',  () => this.addEquipItem());
+    document.getElementById('add-artifact-btn')?.addEventListener('click', () => this.addArtifact());
 
     document.querySelectorAll('.remove-equip-btn').forEach(btn =>
       btn.addEventListener('click', () => {
         const type = btn.dataset.type;
         if (type === 'weapon') this.removeWeapon(btn.dataset.id);
         else if (type === 'armor') this.removeArmor(btn.dataset.id);
+        else if (type === 'artifact') this.removeArtifact(btn.dataset.id);
         else this.removeEquipItem(btn.dataset.id);
       }));
 
     document.querySelectorAll('.equip-field').forEach(inp =>
       inp.addEventListener('change', () => {
-        const list = inp.dataset.type === 'weapon' ? this.char.weapons
-                   : inp.dataset.type === 'armor'  ? this.char.armor
+        const list = inp.dataset.type === 'weapon'   ? this.char.weapons
+                   : inp.dataset.type === 'armor'    ? this.char.armor
+                   : inp.dataset.type === 'artifact' ? (this.char.artifacts || [])
                    : this.char.equipment;
         const item = list.find(x => x.id === inp.dataset.id);
         if (!item) return;
