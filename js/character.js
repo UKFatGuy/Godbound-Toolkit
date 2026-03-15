@@ -755,6 +755,9 @@ const GoCharacter = {
                   placeholder="Effort" title="Committed Effort (e.g. Scene, Day)">
                 <button class="btn-icon remove-gift-btn"
                   data-word-id="${word.id}" data-gift-id="${g.id}" title="Remove gift">✕</button>
+                <textarea class="gift-description gift-field"
+                  data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="description"
+                  placeholder="Description…" rows="2">${this._esc(g.description || '')}</textarea>
               </div>`
             ).join('')}
           </div>` : '<p class="empty-msg-sm">No gifts yet.</p>'}
