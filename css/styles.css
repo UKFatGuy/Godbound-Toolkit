@@ -778,26 +778,6 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   font-style: italic;
 }
 
-/* Level facts grid */
-.level-facts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: .4rem;
-  margin-top: .3rem;
-}
-.level-fact-item {
-  flex-direction: row !important;
-  align-items: center;
-}
-.level-fact-num {
-  color: var(--gold);
-  font-weight: 700;
-  font-size: .88rem;
-  min-width: 1.5rem;
-  text-align: right;
-  margin-right: .35rem;
-}
-
 /* ─── Attribute block (new PDF layout) ───────────────────── */
 .attr-abbr {
   color: var(--gold);
