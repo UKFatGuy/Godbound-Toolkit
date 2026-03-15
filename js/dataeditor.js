@@ -245,6 +245,7 @@ const GoDataEditor = {
             <select class="input-sm de-gift-type-select" data-word-id="${word.id}" title="Gift type">
               <option value="lesser">Lesser (1pt)</option>
               <option value="greater">Greater (2pt)</option>
+              <option value="innate">Innate</option>
             </select>
             <input type="text" class="input-sm de-gift-name-input"
               placeholder="Gift name…" data-word-id="${word.id}" maxlength="80">
@@ -268,8 +269,14 @@ const GoDataEditor = {
             </div>
             ${word.gifts.map(g => `
               <div class="gift-row" data-de-gift-id="${g.id}">
-                <span class="gift-type-badge ${(g.type || 'lesser') === 'greater' ? 'gift-greater' : 'gift-lesser'}">
-                  ${(g.type || 'lesser') === 'greater' ? 'GREATER' : 'LESSER'}
+                <span class="gift-type-badge ${
+                  (g.type || 'lesser') === 'greater' ? 'gift-greater' :
+                  (g.type || 'lesser') === 'innate'  ? 'gift-innate'  : 'gift-lesser'
+                }">
+                  ${
+                  (g.type || 'lesser') === 'greater' ? 'GREATER' :
+                  (g.type || 'lesser') === 'innate'  ? 'INNATE'  : 'LESSER'
+                  }
                 </span>
                 <input type="text" class="input-main de-gift-field"
                   value="${this._esc(g.name)}"
@@ -278,7 +285,7 @@ const GoDataEditor = {
                 <select class="input-sm de-gift-field"
                   data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="activation"
                   title="Activation type">
-                  ${['Constant','Instant','On Turn','Action','Innate'].map(a =>
+                  ${['Constant','Instant','On Turn','Action'].map(a =>
                     `<option value="${a}" ${(g.activation || 'Action') === a ? 'selected' : ''}>${a}</option>`
                   ).join('')}
                 </select>
