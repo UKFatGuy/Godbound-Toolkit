@@ -67,15 +67,27 @@ const GoDice = {
     });
   },
 
-  rollFray(level) {
+  rollFray(level, bonusDice) {
     const notation = GoUtils.getFrayDice(level);
     const parsed   = GoUtils.parseDiceNotation(notation);
     if (!parsed) return;
     const rolls  = GoUtils.rollDice(parsed.count, parsed.sides);
-    const total  = rolls.reduce((a, b) => a + b, 0);
+    let   total  = rolls.reduce((a, b) => a + b, 0);
+    let   allRolls = [...rolls];
+    let   label    = `Fray Dice Lv${level} (${notation})`;
+
+    if (bonusDice) {
+      const bonusParsed = GoUtils.parseDiceNotation(bonusDice);
+      if (bonusParsed) {
+        const bonusRolls = GoUtils.rollDice(bonusParsed.count, bonusParsed.sides);
+        total    += bonusRolls.reduce((a, b) => a + b, 0);
+        allRolls  = [...allRolls, ...bonusRolls];
+        label     = `Fray Dice Lv${level} (${notation} + ${bonusDice})`;
+      }
+    }
+
     this._addHistory({
-      label:    `Fray Dice Lv${level} (${notation})`,
-      rolls, modifier: 0, total,
+      label, rolls: allRolls, modifier: 0, total,
       ts: new Date().toLocaleTimeString()
     });
   },
@@ -156,6 +168,12 @@ const GoDice = {
           <div class="form-row">
             <label class="form-label">Character Level
               <input id="fray-level" type="number" class="input-sm" value="1" min="1" max="30">
+            </label>
+            <label class="form-label">Bonus Dice
+              <select id="fray-bonus-dice" class="input-sm">
+                <option value="">None</option>
+                ${['1d4','1d6','1d8','1d10','1d12'].map(d => `<option value="${d}">${d}</option>`).join('')}
+              </select>
             </label>
             <span id="fray-notation" class="fray-badge">1d6</span>
             <button id="fray-roll-btn" class="btn-primary self-end">Roll Fray</button>
@@ -277,14 +295,20 @@ const GoDice = {
       this.rollSave(target, type);
     });
 
-    /* Fray dice – update notation label on level change */
+    /* Fray dice – update notation label on level or bonus change */
     document.getElementById('fray-level')?.addEventListener('input', e => {
-      const lvl = parseInt(e.target.value, 10) || 1;
-      document.getElementById('fray-notation').textContent = GoUtils.getFrayDice(lvl);
+      const lvl   = parseInt(e.target.value, 10) || 1;
+      const bonus = document.getElementById('fray-bonus-dice')?.value || '';
+      document.getElementById('fray-notation').textContent = GoUtils.getFrayDiceDisplay(lvl, bonus);
+    });
+    document.getElementById('fray-bonus-dice')?.addEventListener('change', e => {
+      const lvl = parseInt(document.getElementById('fray-level').value, 10) || 1;
+      document.getElementById('fray-notation').textContent = GoUtils.getFrayDiceDisplay(lvl, e.target.value);
     });
     document.getElementById('fray-roll-btn')?.addEventListener('click', () => {
-      const lvl = parseInt(document.getElementById('fray-level').value, 10) || 1;
-      this.rollFray(lvl);
+      const lvl   = parseInt(document.getElementById('fray-level').value, 10) || 1;
+      const bonus = document.getElementById('fray-bonus-dice')?.value || '';
+      this.rollFray(lvl, bonus);
     });
 
     /* Clear history */
