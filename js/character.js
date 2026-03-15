@@ -200,7 +200,7 @@ const GoCharacter = {
           <label class="form-label overview-compact">
             Level
             <input type="number" class="input-sm" data-field="level"
-              value="${c.level}" min="1" max="10">
+              value="${c.level}" min="1" max="30">
           </label>
           <label class="form-label overview-compact">
             Experience
@@ -247,7 +247,7 @@ const GoCharacter = {
           </div>
           <p class="level-facts-note">Add a new Fact related to their adventures or deeds every level</p>
           <div class="fact-row" id="level-facts-container">
-            ${[2,3,4,5,6,7,8,9,10].map(lvl => `
+            ${Array.from({length: 29}, (_, i) => i + 2).map(lvl => `
               <label class="form-label fact-field" data-level-fact-row="${lvl}"${lvl > (c.level || 1) ? ' style="display:none"' : ''}>
                 Level ${lvl} Fact
                 <textarea class="notes-area" data-field="level-fact-${lvl}" rows="3"
