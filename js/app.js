@@ -14,6 +14,7 @@ const GoApp = {
     GoCombat.init();
     GoCharacter.init();
     GoDataEditor.init();
+    this._setupImportExport();
     this._restoreActiveTab();
   },
 
@@ -38,6 +39,13 @@ const GoApp = {
   _restoreActiveTab() {
     const saved = localStorage.getItem('godbound_active_tab') || 'dice-tab';
     this._switchTab(saved);
+  },
+
+  /* ─── Import / Export ───────────────────────────────────────────── */
+
+  _setupImportExport() {
+    document.getElementById('export-btn')?.addEventListener('click', () => GoImportExport.exportAll());
+    document.getElementById('import-btn')?.addEventListener('click', () => GoImportExport.importFromFile());
   },
 
   /* ─── Toast notifications ───────────────────────────────────────── */
