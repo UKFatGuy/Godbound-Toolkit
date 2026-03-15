@@ -216,17 +216,15 @@ const GoCharacter = {
         <!-- Goal -->
         <label class="form-label mt-sm">
           Goal
-          <input type="text" class="input-main" data-field="goal"
-            value="${this._esc(c.goal || '')}"
-            placeholder="Character's divine goal or purpose…">
+          <textarea class="notes-area" data-field="goal" rows="3"
+            placeholder="Character's divine goal or purpose…">${this._esc(c.goal || '')}</textarea>
         </label>
 
         <!-- Description -->
         <label class="form-label mt-sm">
           Description
-          <input type="text" class="input-main" data-field="char-description"
-            value="${this._esc(c.description || '')}"
-            placeholder="Age, Race, Gender, Height, Weight, etc.">
+          <textarea class="notes-area" data-field="char-description" rows="3"
+            placeholder="Age, Race, Gender, Height, Weight, etc.">${this._esc(c.description || '')}</textarea>
         </label>
 
         <!-- Facts -->
