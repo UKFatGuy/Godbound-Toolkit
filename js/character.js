@@ -31,7 +31,10 @@ const GoCharacter = {
       attrBonuses: { str: 0,  con: 0,  dex: 0,  int: 0,  wis: 0,  cha: 0  },
 
       hp:          { max: 8, current: 8, bonus: 0 },
-      ac:          10,
+      armorType:    'none',
+      shieldOrCloak: false,
+      defenseAttr:  'dex',
+      ac:            9,
       attackBonus: 2,
 
       saves: { hardiness: 15, evasion: 15, spirit: 15 },
@@ -346,17 +349,42 @@ const GoCharacter = {
           </div>
           <div class="armor-section">
             <h3 class="section-subtitle">Armour</h3>
-            <p class="formula-note">Shield: +1 &nbsp;|&nbsp; Light: +2 &nbsp;|&nbsp; Medium: +4* &nbsp;|&nbsp; Heavy: +6**</p>
+            <p class="formula-note">None: 9 &nbsp;|&nbsp; Light: 7 &nbsp;|&nbsp; Medium: 5 &nbsp;|&nbsp; Heavy: 3 &nbsp;|&nbsp; Shield/Cloak: −1</p>
             <div class="hp-row mt-sm">
+              <label class="form-label">
+                Armour Type
+                <select class="input-sm" data-field="armor-type" style="width:auto">
+                  <option value="none"   ${(c.armorType||'none')==='none'   ? 'selected' : ''}>None (9)</option>
+                  <option value="light"  ${(c.armorType||'none')==='light'  ? 'selected' : ''}>Light (7)</option>
+                  <option value="medium" ${(c.armorType||'none')==='medium' ? 'selected' : ''}>Medium (5)</option>
+                  <option value="heavy"  ${(c.armorType||'none')==='heavy'  ? 'selected' : ''}>Heavy (3)</option>
+                </select>
+              </label>
+              <label class="form-label">
+                Base AC
+                <input type="number" class="input-sm" data-field="base-ac"
+                  value="${this._armorTypeToBaseAC(c.armorType||'none')}" readonly>
+              </label>
+              <label class="form-label">
+                Shield / Cloak
+                <select class="input-sm" data-field="shield-or-cloak" style="width:auto">
+                  <option value="no"  ${!c.shieldOrCloak ? 'selected' : ''}>No (0)</option>
+                  <option value="yes" ${ c.shieldOrCloak ? 'selected' : ''}>Yes (−1)</option>
+                </select>
+              </label>
+              <label class="form-label">
+                Defence Attr
+                <select class="input-sm" data-field="defense-attr">
+                  ${['str','dex','con','int','wis','cha'].map(a =>
+                    `<option value="${a}" ${(c.defenseAttr||'dex')===a ? 'selected' : ''}>${a.toUpperCase()}</option>`
+                  ).join('')}
+                </select>
+              </label>
               <label class="form-label">
                 Total AC
                 <input type="number" class="input-sm" data-field="ac"
-                  value="${c.ac}" min="0">
+                  value="${c.ac ?? this._armorTypeToBaseAC(c.armorType||'none')}" readonly>
               </label>
-              <div class="form-label">
-                Divine Fury
-                <span class="fray-badge">${GoUtils.getFrayDice(c.level)}</span>
-              </div>
             </div>
           </div>
         </div>
@@ -881,6 +909,32 @@ const GoCharacter = {
     return GoUtils.getAttrMod(score) + bonus;
   },
 
+  _armorTypeToBaseAC(type) {
+    return { none: 9, light: 7, medium: 5, heavy: 3 }[type] ?? 9;
+  },
+
+  _computeBaseAC() {
+    const el = document.querySelector('[data-field="armor-type"]');
+    const type = el ? el.value : (this.char.armorType || 'none');
+    return this._armorTypeToBaseAC(type);
+  },
+
+  _updateAC() {
+    const SHIELD_MOD = 1; // penalty applied when wielding a shield or cloak
+    const baseAC    = this._computeBaseAC();
+    const shieldEl  = document.querySelector('[data-field="shield-or-cloak"]');
+    const hasShield = shieldEl ? shieldEl.value === 'yes' : (this.char.shieldOrCloak || false);
+    const defAttrEl = document.querySelector('[data-field="defense-attr"]');
+    const defAttr   = defAttrEl ? defAttrEl.value : (this.char.defenseAttr || 'dex');
+    const defMod    = this._computeFinalMod(defAttr);
+    const totalAC   = baseAC - (hasShield ? SHIELD_MOD : 0) - defMod;
+    const baseEl    = document.querySelector('[data-field="base-ac"]');
+    const totalEl   = document.querySelector('[data-field="ac"]');
+    if (baseEl)  baseEl.value  = baseAC;
+    if (totalEl) totalEl.value = totalAC;
+    this.char.ac = totalAC;
+  },
+
   _updateSaves() {
     const levelEl = document.querySelector('[data-field="level"]');
     const level = levelEl ? (parseInt(levelEl.value, 10) || this.char.level || 1) : (this.char.level || 1);
@@ -906,8 +960,9 @@ const GoCharacter = {
       this.char.saves.evasion   = eva;
       this.char.saves.spirit    = spi;
     }
-    // also update HP when saves/attributes change
+    // also update HP and AC when saves/attributes change
     this._updateHPMax();
+    this._updateAC();
   },
 
   _updateLevelFacts() {
@@ -967,6 +1022,14 @@ const GoCharacter = {
     /* Recalculate HP when HP bonus changes */
     document.querySelector('[data-field="hp-max-bonus"]')
       ?.addEventListener('input', () => { this._updateHPMax(); });
+
+    /* Recalculate AC when armour settings change */
+    document.querySelector('[data-field="armor-type"]')
+      ?.addEventListener('change', () => { this._updateAC(); });
+    document.querySelector('[data-field="shield-or-cloak"]')
+      ?.addEventListener('change', () => { this._updateAC(); });
+    document.querySelector('[data-field="defense-attr"]')
+      ?.addEventListener('change', () => { this._updateAC(); });
 
     /* Add Shrine button */
     document.getElementById('add-shrine-btn')?.addEventListener('click', () => this.addShrine());
@@ -1084,7 +1147,9 @@ const GoCharacter = {
       'hp-current':       v => c.hp.current        = parseInt(v,10)||0,
       'hp-max':           v => c.hp.max            = parseInt(v,10)||1,
       'hp-max-bonus':     v => { if (!c.hp) c.hp = {}; c.hp.bonus = parseInt(v,10)||0; },
-      'ac':               v => c.ac                = parseInt(v,10)||10,
+      'armor-type':       v => c.armorType         = v,
+      'shield-or-cloak':  v => c.shieldOrCloak     = (v === 'yes'),
+      'defense-attr':     v => c.defenseAttr       = v,
       'attack-bonus':     v => c.attackBonus       = parseInt(v,10)||0,
       'save-hardiness':   v => c.saves.hardiness   = parseInt(v,10)||15,
       'save-evasion':     v => c.saves.evasion     = parseInt(v,10)||15,
@@ -1166,6 +1231,9 @@ const GoCharacter = {
       const badge = document.querySelector('.fray-badge');
       if (badge) badge.textContent = GoUtils.getFrayDice(c.level);
     }
+
+    /* Ensure AC is recalculated after collecting all values */
+    this._updateAC();
 
     /* Update char selector label */
     const sel = document.getElementById('char-select');
