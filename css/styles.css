@@ -205,7 +205,7 @@ textarea:focus { border-color: var(--border-focus); }
 
 /* Overview layout tweaks */
 .overview-level { display: flex; justify-content: center; }
-.fact-row { display: flex; gap: .75rem; width: 100%; }
+.fact-row { display: flex; flex-direction: column; gap: .75rem; width: 100%; }
 .fact-field { flex: 1; }
 .fact-field .notes-area { width: 100%; }
 
