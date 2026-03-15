@@ -11,7 +11,8 @@ const GoStorage = {
     CHARACTERS:       'godbound_characters',
     ACTIVE_CHARACTER: 'godbound_active_char',
     COMBAT:           'godbound_combat',
-    DICE_HISTORY:     'godbound_dice_history'
+    DICE_HISTORY:     'godbound_dice_history',
+    DATA_TEMPLATES:   'godbound_data_templates'
   },
 
   save(key, data) {
@@ -50,5 +51,8 @@ const GoStorage = {
   loadCombat()               { return this.load(this.KEYS.COMBAT, null); },
 
   saveDiceHistory(history)   { return this.save(this.KEYS.DICE_HISTORY, history); },
-  loadDiceHistory()          { return this.load(this.KEYS.DICE_HISTORY, []); }
+  loadDiceHistory()          { return this.load(this.KEYS.DICE_HISTORY, []); },
+
+  saveDataTemplates(data)    { return this.save(this.KEYS.DATA_TEMPLATES, data); },
+  loadDataTemplates()        { return this.load(this.KEYS.DATA_TEMPLATES, { words: [], weapons: [], equipment: [] }); }
 };

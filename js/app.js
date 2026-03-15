@@ -13,6 +13,7 @@ const GoApp = {
     GoDice.init();
     GoCombat.init();
     GoCharacter.init();
+    GoDataEditor.init();
     this._restoreActiveTab();
   },
 
