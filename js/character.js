@@ -15,19 +15,23 @@ const GoCharacter = {
 
   _newCharacter(name = 'New Character') {
     return {
-      id:         GoUtils.uid(),
+      id:           GoUtils.uid(),
       name,
-      level:      1,
-      background: '',
-      origin:     '',
-      career:     '',
+      level:        1,
+      background:   '',
+      goal:         '',
+      description:  '',
+      experience:   0,
+      origin:       '',
+      career:       '',
       relationship: '',
+      levelFacts:   {},
 
-      attributes: { str: 10, int: 10, wis: 10, dex: 10, con: 10, cha: 10 },
-      attrBonuses: { str: 0,  int: 0,  wis: 0,  dex: 0,  con: 0,  cha: 0  },
+      attributes:  { str: 10, con: 10, dex: 10, int: 10, wis: 10, cha: 10 },
+      attrBonuses: { str: 0,  con: 0,  dex: 0,  int: 0,  wis: 0,  cha: 0  },
 
-      hp:         { max: 8, current: 8, bonus: 0 },
-      ac:         10,
+      hp:          { max: 8, current: 8, bonus: 0 },
+      ac:          10,
       attackBonus: 2,
 
       saves: { hardiness: 15, evasion: 15, spirit: 15 },
@@ -35,8 +39,18 @@ const GoCharacter = {
       effort:    { total: 2, committedDay: 0, committedScene: 0 },
       dominion:  { total: 0 },
       influence: { max: 0, current: 0 },
+      wealth:    { total: 0, free: 0 },
 
-      words: [],
+      apotheosis: {},
+
+      cult: {
+        name: '', demand: 0, power: 0, cohesion: 0,
+        actionDie: '', trouble: 0,
+        holyLaws: '', features: '', problems: '', points: 0
+      },
+      shrines: [],
+
+      words:     [],
       weapons:   [],
       armor:     [],
       equipment: [],
@@ -106,10 +120,10 @@ const GoCharacter = {
     this._renderWords();
   },
 
-  addGift(wordId, giftName) {
+  addGift(wordId, giftName, giftType = 'lesser') {
     const word = this.char.words.find(w => w.id === wordId);
     if (!word || !giftName.trim()) return;
-    word.gifts.push({ id: GoUtils.uid(), name: giftName.trim(), effort: '', description: '', active: false });
+    word.gifts.push({ id: GoUtils.uid(), name: giftName.trim(), type: giftType, activation: 'Action', smite: false, effort: '', description: '', active: false });
     this._save();
     this._renderWords();
   },
@@ -142,6 +156,9 @@ const GoCharacter = {
   removeArmor(id)     { this.char.armor     = this.char.armor.filter(x => x.id !== id);   this._save(); this._renderEquipment(); },
   removeEquipItem(id) { this.char.equipment = this.char.equipment.filter(x => x.id !== id); this._save(); this._renderEquipment(); },
 
+  addShrine()       { if (!this.char.shrines) this.char.shrines = []; this.char.shrines.push({ id: GoUtils.uid(), level: this.char.level, place: '' }); this._save(); this._renderShrines(); },
+  removeShrine(id)  { this.char.shrines = (this.char.shrines || []).filter(x => x.id !== id); this._save(); this._renderShrines(); },
+
   /* ─── Full render ───────────────────────────────────────────────── */
 
   render() {
@@ -149,6 +166,10 @@ const GoCharacter = {
     if (!el) return;
 
     const c = this.char;
+    const cult      = c.cult      || {};
+    const wealth    = c.wealth    || {};
+    const apo       = c.apotheosis || {};
+    const giftPts   = 4 + 2 * (c.level || 1);
 
     el.innerHTML = `
       <!-- Character selector bar -->
@@ -162,136 +183,294 @@ const GoCharacter = {
         <button id="char-delete-btn" class="btn-danger">Delete</button>
       </div>
 
-      <!-- Overview -->
+      <!-- ══ PAGE 1: Overview ══════════════════════════════════════ -->
       <div class="card">
         <h2 class="card-title">Overview</h2>
-        <div class="form-grid">
-          <div class="overview-level col-span-2">
-            <label class="form-label">Level
-              <input type="number" class="input-sm" data-field="level" value="${c.level}" min="1" max="10">
+
+        <!-- Name / Level / XP -->
+        <div class="overview-header">
+          <label class="form-label overview-name-label">
+            Character Full Name
+            <input type="text" class="input-main" data-field="name"
+              value="${this._esc(c.name)}" placeholder="Character full name…">
+          </label>
+          <label class="form-label overview-compact">
+            Level
+            <input type="number" class="input-sm" data-field="level"
+              value="${c.level}" min="1" max="10">
+          </label>
+          <label class="form-label overview-compact">
+            Experience
+            <input type="number" class="input-sm" data-field="experience"
+              value="${c.experience || 0}" min="0">
+          </label>
+        </div>
+
+        <!-- Goal -->
+        <label class="form-label mt-sm">
+          Goal
+          <input type="text" class="input-main" data-field="goal"
+            value="${this._esc(c.goal || '')}"
+            placeholder="Character's divine goal or purpose…">
+        </label>
+
+        <!-- Description -->
+        <label class="form-label mt-sm">
+          Description
+          <input type="text" class="input-main" data-field="char-description"
+            value="${this._esc(c.description || '')}"
+            placeholder="Age, Race, Gender, Height, Weight, etc.">
+        </label>
+
+        <!-- Facts -->
+        <div class="mt-sm">
+          <h3 class="section-subtitle">Facts</h3>
+          <div class="fact-row">
+            <label class="form-label fact-field">
+              Origin
+              <textarea class="notes-area" data-field="origin" rows="3"
+                placeholder="Familiar with the land of their birth, speak the native language and aware of the figures of influence.">${this._esc(c.origin)}</textarea>
+            </label>
+            <label class="form-label fact-field">
+              Past Career
+              <textarea class="notes-area" data-field="career" rows="3"
+                placeholder="The way they lived before becoming Godbound; if it was necessary for them to labour at all.">${this._esc(c.career)}</textarea>
+            </label>
+            <label class="form-label fact-field">
+              Relationship
+              <textarea class="notes-area" data-field="relationship" rows="3"
+                placeholder="Sacred pact, bond of blood, hostile, etc. to an organisation, religion, or other group.">${this._esc(c.relationship)}</textarea>
             </label>
           </div>
-
-          <div class="fact-row col-span-2">
-            <label class="form-label fact-field">Origin
-              <textarea class="notes-area" data-field="origin" rows="3" placeholder="Place of birth, family, short origin…">${this._esc(c.origin)}</textarea>
-            </label>
-            <label class="form-label fact-field">Career
-              <textarea class="notes-area" data-field="career" rows="3" placeholder="Profession, training, notable roles…">${this._esc(c.career)}</textarea>
-            </label>
-            <label class="form-label fact-field">Relationship
-              <textarea class="notes-area" data-field="relationship" rows="3" placeholder="Key relationships or allies…">${this._esc(c.relationship)}</textarea>
-            </label>
+          <p class="level-facts-note">Add a new Fact related to their adventures or deeds every level</p>
+          <div class="level-facts-grid">
+            ${[2,3,4,5,6,7,8,9,10].map(lvl => `
+              <label class="form-label level-fact-item">
+                <span class="level-fact-num">${lvl}</span>
+                <input type="text" class="input-main" data-field="level-fact-${lvl}"
+                  value="${this._esc((c.levelFacts || {})[lvl] || '')}"
+                  placeholder="Level ${lvl} fact…">
+              </label>`).join('')}
           </div>
-
         </div>
       </div>
 
-      <!-- Attributes & Saves -->
+      <!-- ══ PAGE 2 UPPER: Attributes & Saves ═══════════════════════ -->
       <div class="card">
         <h2 class="card-title">Attributes &amp; Saves</h2>
         <div class="attr-grid">
-          ${['str','dex','con','int','wis','cha'].map(attr => {
-            const score = c.attributes[attr];
+          ${['str','con','dex','int','wis','cha'].map(attr => {
+            const fullNames = { str:'Strength', con:'Constitution', dex:'Dexterity', int:'Intelligence', wis:'Wisdom', cha:'Charisma' };
+            const score = c.attributes[attr] || 10;
             const bonus = (c.attrBonuses?.[attr] ?? 0);
             const mod   = GoUtils.getAttrMod(score) + bonus;
+            const check = 21 - score;
             return `
               <div class="attr-block">
-                <div class="attr-name">${attr.toUpperCase()}</div>
-                <div class="attr-row">
+                <div class="attr-abbr">${attr.toUpperCase()}</div>
+                <div class="attr-full">${fullNames[attr]}</div>
+                <div class="attr-trow">
+                  <span class="attr-row-lbl">BASE</span>
                   <input type="number" class="attr-score" data-field="attr-${attr}"
                     value="${score}" min="3" max="19" aria-label="${attr} score">
+                </div>
+                <div class="attr-trow">
+                  <span class="attr-row-lbl">BONUS</span>
                   <input type="number" class="attr-bonus-input" data-field="bonus-${attr}"
                     value="${bonus}" aria-label="${attr} bonus">
                 </div>
-                <div class="attr-sub-label">Bonus</div>
-                <div class="attr-mod ${mod >= 0 ? 'mod-pos' : 'mod-neg'}" id="attr-mod-${attr}">${GoUtils.formatMod(mod)}</div>
+                <div class="attr-trow">
+                  <span class="attr-row-lbl">CHECK</span>
+                  <span class="attr-check" id="attr-check-${attr}">${check}</span>
+                </div>
+                <div class="attr-mod-display">
+                  <span class="attr-row-lbl">MOD</span>
+                  <span class="attr-mod ${mod >= 0 ? 'mod-pos' : 'mod-neg'}" id="attr-mod-${attr}">${GoUtils.formatMod(mod)}</span>
+                </div>
               </div>`;
           }).join('')}
         </div>
+        <p class="formula-note">CHECK = 21 − Attribute Score &nbsp;|&nbsp; MOD derived from total (Base + Bonus)</p>
 
-        <div class="form-grid mt-md">
-          <label class="form-label">Hardiness
-            <input type="number" class="input-sm" data-field="save-hardiness"
-              value="${c.saves.hardiness}" min="1" max="20"
-              title="Roll d20 equal to or higher to succeed">
-          </label>
-          <label class="form-label">Evasion
-            <input type="number" class="input-sm" data-field="save-evasion"
-              value="${c.saves.evasion}" min="1" max="20">
-          </label>
-          <label class="form-label">Spirit
-            <input type="number" class="input-sm" data-field="save-spirit"
-              value="${c.saves.spirit}" min="1" max="20">
-          </label>
+        <!-- Saves -->
+        <div class="saves-section mt-md">
+          <h3 class="section-subtitle">Savings</h3>
+          <p class="formula-note">Formula: 16 − Level − Best Attribute Modifier (auto-calculated)</p>
+          <div class="saves-grid">
+            <div class="save-block">
+              <div class="save-name">HARDINESS</div>
+              <div class="save-mod-note">Best of STR / CON</div>
+              <input type="number" class="input-sm save-input" data-field="save-hardiness"
+                value="${c.saves.hardiness}" min="1" max="20" readonly
+                title="Roll d20 equal to or higher to succeed">
+            </div>
+            <div class="save-block">
+              <div class="save-name">EVASION</div>
+              <div class="save-mod-note">Best of DEX / INT</div>
+              <input type="number" class="input-sm save-input" data-field="save-evasion"
+                value="${c.saves.evasion}" min="1" max="20" readonly>
+            </div>
+            <div class="save-block">
+              <div class="save-name">SPIRIT</div>
+              <div class="save-mod-note">Best of WIS / CHA</div>
+              <input type="number" class="input-sm save-input" data-field="save-spirit"
+                value="${c.saves.spirit}" min="1" max="20" readonly>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Combat Stats -->
+      <!-- ══ PAGE 2 MIDDLE: Hit Points & Armour ════════════════════ -->
       <div class="card">
-        <h2 class="card-title">Combat Stats</h2>
-        <div class="form-grid">
-          <label class="form-label">HP (Max)
-            <input type="number" class="input-sm" data-field="hp-max"
-              value="${c.hp.max}" min="1" readonly>
-          </label>
-          <label class="form-label">HP Bonus
-            <input type="number" class="input-sm" data-field="hp-max-bonus"
-              value="${c.hp.bonus || 0}" title="Flat bonus added to max HP">
-          </label>
-          <label class="form-label">Armour Class
-            <input type="number" class="input-sm" data-field="ac"
-              value="${c.ac}" min="0">
-          </label>
-          <label class="form-label">Attack Bonus
+        <h2 class="card-title">Hit Points &amp; Armour</h2>
+        <div class="hp-armor-grid">
+          <div class="hp-section">
+            <h3 class="section-subtitle">Hit Points</h3>
+            <p class="formula-note">1st Lvl: 8 + CON mod &nbsp;|&nbsp; Each level after: 4 + ½ CON mod</p>
+            <div class="hp-row mt-sm">
+              <label class="form-label">
+                Maximum
+                <input type="number" class="input-sm" data-field="hp-max"
+                  value="${c.hp.max}" min="1" readonly>
+              </label>
+              <label class="form-label">
+                Current
+                <input type="number" class="input-sm" data-field="hp-current"
+                  value="${c.hp.current != null ? c.hp.current : c.hp.max}" min="0">
+              </label>
+              <label class="form-label">
+                HP Bonus
+                <input type="number" class="input-sm" data-field="hp-max-bonus"
+                  value="${c.hp.bonus || 0}" title="Flat bonus added to maximum HP">
+              </label>
+            </div>
+          </div>
+          <div class="armor-section">
+            <h3 class="section-subtitle">Armour</h3>
+            <p class="formula-note">Shield: +1 &nbsp;|&nbsp; Light: +2 &nbsp;|&nbsp; Medium: +4* &nbsp;|&nbsp; Heavy: +6**</p>
+            <div class="hp-row mt-sm">
+              <label class="form-label">
+                Total AC
+                <input type="number" class="input-sm" data-field="ac"
+                  value="${c.ac}" min="0">
+              </label>
+              <div class="form-label">
+                Divine Fury
+                <span class="fray-badge">${GoUtils.getFrayDice(c.level)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PAGE 2 LOWER: Combat ═══════════════════════════════════ -->
+      <div class="card">
+        <h2 class="card-title">Combat</h2>
+        <div class="combat-header-row">
+          <label class="form-label">
+            Base Attack Bonus
             <input type="number" class="input-sm" data-field="attack-bonus"
               value="${c.attackBonus}">
           </label>
-          <label class="form-label">Fray Dice
+          <div class="form-label">
+            Fray Die
             <span class="fray-badge">${GoUtils.getFrayDice(c.level)}</span>
-          </label>
+          </div>
+          <div class="form-label">
+            Unarmed
+            <span class="combat-info-static">1d2 + STR mod</span>
+          </div>
+        </div>
+        <p class="formula-note mt-sm">Attack = Level + STR mod (melee) &nbsp;|&nbsp; Level + DEX mod (ranged)</p>
+        <div class="damage-chart mt-sm">
+          <span class="damage-chart-title">Damage Chart (RpD : Dmg)</span>
+          <span class="damage-chart-val">2–5 : 1</span>
+          <span class="damage-chart-sep">/</span>
+          <span class="damage-chart-val">6–9 : 2</span>
+          <span class="damage-chart-sep">/</span>
+          <span class="damage-chart-val">10+ : 4</span>
         </div>
       </div>
 
-      <!-- Divine Resources -->
+      <!-- ══ PAGE 2 LOWER: Divine Resources ════════════════════════ -->
       <div class="card">
         <h2 class="card-title">Divine Resources</h2>
-        <div class="form-grid">
-          <label class="form-label">Total Effort
-            <input type="number" class="input-sm" data-field="effort-total"
-              value="${c.effort.total}" min="0" max="10">
-          </label>
-          <label class="form-label">Committed (Day)
-            <input type="number" class="input-sm" data-field="effort-day"
-              value="${c.effort.committedDay}" min="0">
-          </label>
-          <label class="form-label">Committed (Scene)
-            <input type="number" class="input-sm" data-field="effort-scene"
-              value="${c.effort.committedScene}" min="0">
-          </label>
-          <div class="form-label">
-            <span class="sub-label">Available Effort</span>
-            <span class="effort-avail">${c.effort.total - c.effort.committedDay - c.effort.committedScene}</span>
+
+        <!-- Dominion -->
+        <div class="resource-group">
+          <h3 class="section-subtitle">Dominion</h3>
+          <p class="formula-note">DOMINION = Base (1 + Level) + from Cult + from Effort spending</p>
+          <div class="form-grid mt-sm">
+            <label class="form-label">Total Dominion
+              <input type="number" class="input-sm" data-field="dominion"
+                value="${c.dominion.total}" min="0">
+            </label>
           </div>
-          <label class="form-label">Dominion
-            <input type="number" class="input-sm" data-field="dominion"
-              value="${c.dominion.total}" min="0">
-          </label>
-          <label class="form-label">Influence (Current)
-            <input type="number" class="input-sm" data-field="influence-current"
-              value="${c.influence.current}" min="0">
-          </label>
-          <label class="form-label">Influence (Max)
-            <input type="number" class="input-sm" data-field="influence-max"
-              value="${c.influence.max}" min="0">
-          </label>
+        </div>
+
+        <!-- Effort -->
+        <div class="resource-group mt-sm">
+          <h3 class="section-subtitle">Effort</h3>
+          <div class="form-grid">
+            <label class="form-label">Total Effort
+              <input type="number" class="input-sm" data-field="effort-total"
+                value="${c.effort.total}" min="0" max="10">
+            </label>
+            <label class="form-label">Committed (Day)
+              <input type="number" class="input-sm" data-field="effort-day"
+                value="${c.effort.committedDay}" min="0">
+            </label>
+            <label class="form-label">Committed (Scene)
+              <input type="number" class="input-sm" data-field="effort-scene"
+                value="${c.effort.committedScene}" min="0">
+            </label>
+            <div class="form-label">
+              <span class="sub-label">Available</span>
+              <span class="effort-avail">${c.effort.total - c.effort.committedDay - c.effort.committedScene}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Influence -->
+        <div class="resource-group mt-sm">
+          <h3 class="section-subtitle">Influence</h3>
+          <p class="formula-note">Without a Cult: 1 + 1 per 3 levels</p>
+          <div class="form-grid mt-sm">
+            <label class="form-label">Influence (Max)
+              <input type="number" class="input-sm" data-field="influence-max"
+                value="${c.influence.max}" min="0">
+            </label>
+            <label class="form-label">Influence (Used)
+              <input type="number" class="input-sm" data-field="influence-current"
+                value="${c.influence.current}" min="0">
+            </label>
+          </div>
+        </div>
+
+        <!-- Wealth -->
+        <div class="resource-group mt-sm">
+          <h3 class="section-subtitle">Wealth</h3>
+          <div class="form-grid mt-sm">
+            <label class="form-label">Total Wealth
+              <input type="number" class="input-sm" data-field="wealth-total"
+                value="${wealth.total || 0}" min="0">
+            </label>
+            <label class="form-label">Free Wealth
+              <input type="number" class="input-sm" data-field="wealth-free"
+                value="${wealth.free || 0}" min="0">
+            </label>
+          </div>
         </div>
       </div>
 
-      <!-- Words of Power -->
+      <!-- ══ PAGE 3: Words of Power ═════════════════════════════════ -->
       <div class="card" id="words-section">
         <div class="card-header">
-          <h2 class="card-title">Words of Power</h2>
+          <div>
+            <h2 class="card-title">Words of Power <span class="card-title-ref">(p. 29)</span></h2>
+            <p class="formula-note">3 Words at 1st level &nbsp;|&nbsp; Gift Points: <strong>${giftPts}</strong> (4 + 2 × Level)</p>
+            <p class="formula-note">1 pt: Lesser Gift (own Word) &nbsp;/&nbsp; 2 pt: Lesser Gift (other Word) &nbsp;/&nbsp; 2 pt: Greater Gift &nbsp;/&nbsp; 3 pt: New Word</p>
+          </div>
           <div class="btn-group">
             <select id="add-word-select" class="input-sm" aria-label="Choose a Word">
               <option value="">— choose Word —</option>
@@ -304,13 +483,148 @@ const GoCharacter = {
         <div id="words-list"></div>
       </div>
 
-      <!-- Equipment -->
+      <!-- ══ PAGE 4 UPPER: Apotheosis Gifts ════════════════════════ -->
+      <div class="card" id="apotheosis-section">
+        <h2 class="card-title">Apotheosis Gifts <span class="card-title-ref">(p. 31)</span></h2>
+        <div class="apotheosis-layout">
+          <div class="apo-gifts-wrap">
+            <table class="apo-table">
+              <thead>
+                <tr><th>Lvl</th><th>Gift</th><th>Activation</th><th>Gained</th></tr>
+              </thead>
+              <tbody>
+                ${[
+                  { lvl:2, name:'Receive the Incense of Faith', act:'Constant' },
+                  { lvl:3, name:'Sanctify Shrine',              act:'Action'   },
+                  { lvl:3, name:'Smite the Apostate',           act:'Action'   },
+                  { lvl:4, name:'Hear Prayer',                  act:'Constant' },
+                  { lvl:5, name:'Perceive the Petitioner',      act:'Action'   },
+                  { lvl:6, name:'Mark of the Prophet',          act:'Action'   },
+                  { lvl:7, name:'Attend the Faithful',          act:'Action'   },
+                  { lvl:8, name:'To Bless the Nations',         act:'Action'   },
+                ].map(g => {
+                  const gained = apo[g.name] || false;
+                  return `
+                    <tr class="${gained ? 'apo-gained' : ''}">
+                      <td class="apo-lvl">${g.lvl}</td>
+                      <td class="apo-name">${g.name}</td>
+                      <td class="apo-act">${g.act}</td>
+                      <td class="apo-check">
+                        <input type="checkbox" class="apo-gained-check"
+                          data-apo-gift="${this._esc(g.name)}"
+                          ${gained ? 'checked' : ''}>
+                      </td>
+                    </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="apo-ref-tables">
+            <table class="apo-ref-table">
+              <caption>Power &amp; Size</caption>
+              <thead><tr><th>Power</th><th>Size</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>Village</td></tr>
+                <tr><td>2</td><td>City</td></tr>
+                <tr><td>3</td><td>Province</td></tr>
+                <tr><td>4</td><td>Nation</td></tr>
+                <tr><td>5</td><td>Empire</td></tr>
+              </tbody>
+            </table>
+            <table class="apo-ref-table mt-sm">
+              <caption>Action Die &amp; Demands</caption>
+              <thead><tr><th>Die</th><th>Demands</th><th>Type</th></tr></thead>
+              <tbody>
+                <tr><td>1d6</td><td>1</td><td>Nominal</td></tr>
+                <tr><td>1d8</td><td>2</td><td>Sharp</td></tr>
+                <tr><td>1d10</td><td>3</td><td>Harsh</td></tr>
+                <tr><td>1d12</td><td>4</td><td>—</td></tr>
+                <tr><td>1d20</td><td>5</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PAGE 4 LOWER: Cult ══════════════════════════════════════ -->
+      <div class="card" id="cult-section">
+        <h2 class="card-title">Cult <span class="card-title-ref">(p. 133)</span></h2>
+        <p class="formula-note">At creation: Cohesion = Power &nbsp;|&nbsp; Trouble = Action Die ÷ 4</p>
+
+        <div class="cult-stats-row mt-sm">
+          <label class="form-label cult-name-label">
+            Cult / Pantheon Name
+            <input type="text" class="input-main" data-field="cult-name"
+              value="${this._esc(cult.name || '')}" placeholder="Name of cult or pantheon…">
+          </label>
+          <label class="form-label">
+            Demand
+            <input type="number" class="input-sm" data-field="cult-demand"
+              value="${cult.demand || 0}" min="0" max="3">
+          </label>
+          <label class="form-label">
+            Power
+            <input type="number" class="input-sm" data-field="cult-power"
+              value="${cult.power || 0}" min="0">
+          </label>
+          <label class="form-label">
+            Cohesion
+            <input type="number" class="input-sm" data-field="cult-cohesion"
+              value="${cult.cohesion || 0}" min="0">
+          </label>
+          <label class="form-label">
+            Action Die
+            <input type="text" class="input-sm" data-field="cult-action-die"
+              value="${this._esc(cult.actionDie || '')}" placeholder="1d6">
+          </label>
+          <label class="form-label">
+            Trouble
+            <input type="number" class="input-sm" data-field="cult-trouble"
+              value="${cult.trouble || 0}" min="0">
+          </label>
+        </div>
+
+        <div class="cult-details-grid mt-sm">
+          <label class="form-label">
+            Holy Laws
+            <textarea class="notes-area" data-field="cult-holy-laws" rows="3"
+              placeholder="The divine laws and commandments of the cult…">${this._esc(cult.holyLaws || '')}</textarea>
+          </label>
+          <label class="form-label">
+            Features
+            <textarea class="notes-area" data-field="cult-features" rows="3"
+              placeholder="Notable features, temples, rituals…">${this._esc(cult.features || '')}</textarea>
+          </label>
+          <label class="form-label">
+            Problems
+            <textarea class="notes-area" data-field="cult-problems" rows="3"
+              placeholder="Current threats, crises, or challenges…">${this._esc(cult.problems || '')}</textarea>
+          </label>
+          <label class="form-label">
+            Points
+            <input type="number" class="input-sm" data-field="cult-points"
+              value="${cult.points || 0}" min="0">
+          </label>
+        </div>
+
+        <!-- Shrines -->
+        <div class="shrines-section mt-sm">
+          <div class="card-header">
+            <h3 class="section-subtitle">Shrines <span class="card-title-ref">(p. 31)</span></h3>
+            <button id="add-shrine-btn" class="btn-ghost">+ Add Shrine</button>
+          </div>
+          <p class="formula-note">Cost: Wealth equal to Godbound's level. Reconsecration required if desecrated.</p>
+          <div id="shrines-list"></div>
+        </div>
+      </div>
+
+      <!-- ══ Equipment ══════════════════════════════════════════════ -->
       <div class="card" id="equipment-section">
         <h2 class="card-title">Equipment</h2>
         <div id="equipment-list"></div>
       </div>
 
-      <!-- Notes -->
+      <!-- ══ Notes ══════════════════════════════════════════════════ -->
       <div class="card">
         <h2 class="card-title">Notes</h2>
         <textarea class="notes-area" data-field="notes" rows="6"
@@ -326,6 +640,7 @@ const GoCharacter = {
 
     this._renderWords();
     this._renderEquipment();
+    this._renderShrines();
     this._attachCharEvents();
   },
 
@@ -345,6 +660,10 @@ const GoCharacter = {
         <div class="word-header">
           <span class="word-name">${word.name}</span>
           <div class="btn-group">
+            <select class="input-sm gift-type-select" data-word-id="${word.id}" title="Gift type">
+              <option value="lesser">Lesser (1pt)</option>
+              <option value="greater">Greater (2pt)</option>
+            </select>
             <input type="text" class="input-sm gift-name-input" placeholder="Gift name…"
               data-word-id="${word.id}" maxlength="60">
             <button class="btn-ghost add-gift-btn" data-word-id="${word.id}">+ Gift</button>
@@ -354,19 +673,39 @@ const GoCharacter = {
 
         ${word.gifts.length ? `
           <div class="gifts-list">
+            <div class="gifts-header">
+              <span class="gift-col-type">Type</span>
+              <span class="gift-col-name">Gift Name</span>
+              <span class="gift-col-act">Activation</span>
+              <span class="gift-col-smite">Smite</span>
+              <span class="gift-col-effort">Effort</span>
+            </div>
             ${word.gifts.map(g => `
               <div class="gift-row ${g.active ? 'gift-active' : ''}" data-gift-id="${g.id}">
                 <button class="gift-toggle-btn" data-word-id="${word.id}" data-gift-id="${g.id}"
                   title="Toggle active">${g.active ? '◉' : '○'}</button>
+                <span class="gift-type-badge ${(g.type || 'lesser') === 'greater' ? 'gift-greater' : 'gift-lesser'}">
+                  ${(g.type || 'lesser') === 'greater' ? 'GREATER' : 'LESSER'}
+                </span>
                 <input type="text" class="input-main gift-field" value="${this._esc(g.name)}"
                   data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="name"
                   placeholder="Gift name" title="Gift name">
+                <select class="input-sm gift-field"
+                  data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="activation"
+                  title="Activation type">
+                  ${['Constant','Instant','On Turn','Action'].map(a =>
+                    `<option value="${a}" ${(g.activation || 'Action') === a ? 'selected' : ''}>${a}</option>`
+                  ).join('')}
+                </select>
+                <label class="checkbox-label gift-smite-label" title="Smite gift">
+                  <input type="checkbox" class="gift-field"
+                    data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="smite"
+                    ${g.smite ? 'checked' : ''}>
+                  Smite
+                </label>
                 <input type="text" class="input-sm gift-field" value="${this._esc(g.effort)}"
                   data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="effort"
-                  placeholder="Effort cost" title="Effort cost">
-                <input type="text" class="input-main gift-field" value="${this._esc(g.description)}"
-                  data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="description"
-                  placeholder="Description" title="Description">
+                  placeholder="Effort" title="Committed Effort (e.g. Scene, Day)">
                 <button class="btn-icon remove-gift-btn"
                   data-word-id="${word.id}" data-gift-id="${g.id}" title="Remove gift">✕</button>
               </div>`
@@ -462,7 +801,35 @@ const GoCharacter = {
     this._attachEquipEvents();
   },
 
-  /* ─── Live attribute modifier update ───────────────────────────── */
+  /* ─── Shrines render ────────────────────────────────────────────── */
+
+  _renderShrines() {
+    const el = document.getElementById('shrines-list');
+    if (!el) return;
+
+    const shrines = this.char.shrines || [];
+    if (!shrines.length) {
+      el.innerHTML = '<p class="empty-msg-sm">No shrines yet.</p>';
+      return;
+    }
+
+    el.innerHTML = `
+      <table class="equip-table">
+        <thead><tr><th>Level Built</th><th>Location / Place</th><th></th></tr></thead>
+        <tbody>
+          ${shrines.map(s => `
+            <tr data-shrine-id="${s.id}">
+              <td><input type="number" class="input-sm shrine-field" value="${s.level || 1}"
+                data-id="${s.id}" data-f="level" min="1" max="10" aria-label="Level shrine built"></td>
+              <td><input type="text" class="input-main shrine-field" value="${this._esc(s.place || '')}"
+                data-id="${s.id}" data-f="place" placeholder="Location…" aria-label="Shrine location"></td>
+              <td><button class="btn-icon remove-shrine-btn" data-id="${s.id}">✕</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+
+    this._attachShrineEvents();
+  },
 
   _updateAttrMod(attr) {
     const scoreEl = document.querySelector(`[data-field="attr-${attr}"]`);
@@ -474,15 +841,9 @@ const GoCharacter = {
     const mod   = GoUtils.getAttrMod(score) + bonus;
     modEl.textContent = GoUtils.formatMod(mod);
     modEl.className   = `attr-mod ${mod >= 0 ? 'mod-pos' : 'mod-neg'}`;
+    const checkEl = document.getElementById(`attr-check-${attr}`);
+    if (checkEl) checkEl.textContent = 21 - score;
     this._updateSaves();
-  },
-
-  _computeFinalMod(attr) {
-    const scoreEl = document.querySelector(`[data-field="attr-${attr}"]`);
-    const bonusEl = document.querySelector(`[data-field="bonus-${attr}"]`);
-    const score = scoreEl ? (parseInt(scoreEl.value, 10) || 10) : (this.char.attributes[attr] || 10);
-    const bonus = bonusEl ? (parseInt(bonusEl.value, 10) || 0) : ((this.char.attrBonuses && this.char.attrBonuses[attr]) || 0);
-    return GoUtils.getAttrMod(score) + bonus;
   },
 
   _computeHPMax() {
@@ -597,6 +958,20 @@ const GoCharacter = {
     /* Recalculate HP when HP bonus changes */
     document.querySelector('[data-field="hp-max-bonus"]')
       ?.addEventListener('input', () => { this._updateHPMax(); });
+
+    /* Add Shrine button */
+    document.getElementById('add-shrine-btn')?.addEventListener('click', () => this.addShrine());
+
+    /* Apotheosis checkboxes – save immediately on change */
+    document.querySelectorAll('.apo-gained-check').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const c = this.char;
+        if (!c.apotheosis) c.apotheosis = {};
+        c.apotheosis[cb.dataset.apoGift] = cb.checked;
+        cb.closest('tr').className = cb.checked ? 'apo-gained' : '';
+        this._save();
+      });
+    });
   },
 
   _attachWordEvents() {
@@ -607,14 +982,18 @@ const GoCharacter = {
 
     document.querySelectorAll('.add-gift-btn').forEach(btn =>
       btn.addEventListener('click', () => {
-        const inp = document.querySelector(`.gift-name-input[data-word-id="${btn.dataset.wordId}"]`);
-        if (inp) { this.addGift(btn.dataset.wordId, inp.value); inp.value = ''; }
+        const wid  = btn.dataset.wordId;
+        const inp  = document.querySelector(`.gift-name-input[data-word-id="${wid}"]`);
+        const sel  = document.querySelector(`.gift-type-select[data-word-id="${wid}"]`);
+        if (inp) { this.addGift(wid, inp.value, sel ? sel.value : 'lesser'); inp.value = ''; }
       }));
 
     document.querySelectorAll('.gift-name-input').forEach(inp =>
       inp.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
-          this.addGift(inp.dataset.wordId, inp.value);
+          const wid = inp.dataset.wordId;
+          const sel = document.querySelector(`.gift-type-select[data-word-id="${wid}"]`);
+          this.addGift(wid, inp.value, sel ? sel.value : 'lesser');
           inp.value = '';
         }
       }));
@@ -625,22 +1004,34 @@ const GoCharacter = {
     document.querySelectorAll('.gift-toggle-btn').forEach(btn =>
       btn.addEventListener('click', () => this.toggleGift(btn.dataset.wordId, btn.dataset.giftId)));
 
-    /* In-place gift field editing */
+    /* In-place gift field editing (supports checkboxes for smite) */
     document.querySelectorAll('.gift-field').forEach(inp => {
       inp.addEventListener('change', () => {
         const word = this.char.words.find(w => w.id === inp.dataset.wordId);
         if (!word) return;
         const gift = word.gifts.find(g => g.id === inp.dataset.giftId);
         if (!gift) return;
-        gift[inp.dataset.giftField] = inp.value;
+        gift[inp.dataset.giftField] = inp.type === 'checkbox' ? inp.checked : inp.value;
         this._save();
       });
     });
   },
 
+  _attachShrineEvents() {
+    document.querySelectorAll('.remove-shrine-btn').forEach(btn =>
+      btn.addEventListener('click', () => this.removeShrine(btn.dataset.id)));
+
+    document.querySelectorAll('.shrine-field').forEach(inp =>
+      inp.addEventListener('change', () => {
+        const shrine = (this.char.shrines || []).find(s => s.id === inp.dataset.id);
+        if (!shrine) return;
+        shrine[inp.dataset.f] = inp.type === 'number' ? (parseInt(inp.value, 10) || 1) : inp.value;
+        this._save();
+      }));
+  },
+
   _attachEquipEvents() {
-        this._updateSaves();
-        this._updateHPMax();
+    document.getElementById('add-weapon-btn')?.addEventListener('click', () => this.addWeapon());
     document.getElementById('add-armor-btn')?.addEventListener('click',  () => this.addArmor());
     document.getElementById('add-equip-btn')?.addEventListener('click',  () => this.addEquipItem());
 
@@ -675,6 +1066,9 @@ const GoCharacter = {
       'name':             v => c.name              = v,
       'level':            v => { c.level = parseInt(v,10)||1; },
       'background':       v => c.background        = v,
+      'goal':             v => c.goal              = v,
+      'char-description': v => c.description       = v,
+      'experience':       v => c.experience        = parseInt(v,10)||0,
       'origin':           v => c.origin            = v,
       'career':           v => c.career            = v,
       'relationship':     v => c.relationship      = v,
@@ -692,6 +1086,18 @@ const GoCharacter = {
       'dominion':         v => c.dominion.total    = parseInt(v,10)||0,
       'influence-current':v => c.influence.current = parseInt(v,10)||0,
       'influence-max':    v => c.influence.max     = parseInt(v,10)||0,
+      'wealth-total':     v => { if (!c.wealth) c.wealth = {}; c.wealth.total = parseInt(v,10)||0; },
+      'wealth-free':      v => { if (!c.wealth) c.wealth = {}; c.wealth.free  = parseInt(v,10)||0; },
+      'cult-name':        v => { if (!c.cult) c.cult = {}; c.cult.name      = v; },
+      'cult-demand':      v => { if (!c.cult) c.cult = {}; c.cult.demand    = parseInt(v,10)||0; },
+      'cult-power':       v => { if (!c.cult) c.cult = {}; c.cult.power     = parseInt(v,10)||0; },
+      'cult-cohesion':    v => { if (!c.cult) c.cult = {}; c.cult.cohesion  = parseInt(v,10)||0; },
+      'cult-action-die':  v => { if (!c.cult) c.cult = {}; c.cult.actionDie = v; },
+      'cult-trouble':     v => { if (!c.cult) c.cult = {}; c.cult.trouble   = parseInt(v,10)||0; },
+      'cult-holy-laws':   v => { if (!c.cult) c.cult = {}; c.cult.holyLaws  = v; },
+      'cult-features':    v => { if (!c.cult) c.cult = {}; c.cult.features  = v; },
+      'cult-problems':    v => { if (!c.cult) c.cult = {}; c.cult.problems  = v; },
+      'cult-points':      v => { if (!c.cult) c.cult = {}; c.cult.points    = parseInt(v,10)||0; },
       'notes':            v => c.notes             = v,
     };
 
@@ -706,9 +1112,21 @@ const GoCharacter = {
         const attr = field.slice(6);
         if (!c.attrBonuses) c.attrBonuses = {};
         c.attrBonuses[attr] = parseInt(value, 10) || 0;
+      } else if (field.startsWith('level-fact-')) {
+        const lvl = parseInt(field.slice(11), 10);
+        if (lvl >= 2 && lvl <= 10) {
+          if (!c.levelFacts) c.levelFacts = {};
+          c.levelFacts[lvl] = value;
+        }
       } else if (fieldMap[field]) {
         fieldMap[field](value);
       }
+    });
+
+    /* Collect apotheosis checkboxes */
+    document.querySelectorAll('.apo-gained-check').forEach(cb => {
+      if (!c.apotheosis) c.apotheosis = {};
+      c.apotheosis[cb.dataset.apoGift] = cb.checked;
     });
 
     this._save();
