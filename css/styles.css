@@ -1087,10 +1087,11 @@ tr.apo-gained td { background: rgba(201,168,76,.08); }
 .toast.toast-info    { border-left-color: var(--blue); }
 
 /* ─── Scrollbars ────────────────────────────────────────── */
-::-webkit-scrollbar       { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-surface); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+:root { scrollbar-width: thin; scrollbar-color: var(--gold-dim) #1a0840; }
+::-webkit-scrollbar       { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #1a0840; border-left: 1px solid var(--border); }
+::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 5px; border: 2px solid #1a0840; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
 
 /* ─── Responsive ────────────────────────────────────────── */
 @media (max-width: 700px) {
