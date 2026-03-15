@@ -693,6 +693,7 @@ const GoCharacter = {
             <select class="input-sm gift-type-select" data-word-id="${word.id}" title="Gift type">
               <option value="lesser">Lesser (1pt)</option>
               <option value="greater">Greater (2pt)</option>
+              <option value="innate">Innate</option>
             </select>
             <input type="text" class="input-sm gift-name-input" placeholder="Gift name…"
               data-word-id="${word.id}" maxlength="60">
@@ -714,8 +715,14 @@ const GoCharacter = {
               <div class="gift-row ${g.active ? 'gift-active' : ''}" data-gift-id="${g.id}">
                 <button class="gift-toggle-btn" data-word-id="${word.id}" data-gift-id="${g.id}"
                   title="Toggle active">${g.active ? '◉' : '○'}</button>
-                <span class="gift-type-badge ${(g.type || 'lesser') === 'greater' ? 'gift-greater' : 'gift-lesser'}">
-                  ${(g.type || 'lesser') === 'greater' ? 'GREATER' : 'LESSER'}
+                <span class="gift-type-badge ${
+                  (g.type || 'lesser') === 'greater' ? 'gift-greater' :
+                  (g.type || 'lesser') === 'innate'  ? 'gift-innate'  : 'gift-lesser'
+                }">
+                  ${
+                  (g.type || 'lesser') === 'greater' ? 'GREATER' :
+                  (g.type || 'lesser') === 'innate'  ? 'INNATE'  : 'LESSER'
+                  }
                 </span>
                 <input type="text" class="input-main gift-field" value="${this._esc(g.name)}"
                   data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="name"
@@ -723,7 +730,7 @@ const GoCharacter = {
                 <select class="input-sm gift-field"
                   data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="activation"
                   title="Activation type">
-                  ${['Constant','Instant','On Turn','Action','Innate'].map(a =>
+                  ${['Constant','Instant','On Turn','Action'].map(a =>
                     `<option value="${a}" ${(g.activation || 'Action') === a ? 'selected' : ''}>${a}</option>`
                   ).join('')}
                 </select>

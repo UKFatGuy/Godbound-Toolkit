@@ -730,6 +730,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 .gift-lesser  { background: rgba(83,83,120,.5);  color: var(--text-secondary); }
 .gift-greater { background: rgba(201,168,76,.25); color: var(--gold-light); }
+.gift-innate  { background: rgba(60,130,90,.35);  color: #7ecfa0; }
 
 .gift-smite-label {
   font-size: .75rem;
