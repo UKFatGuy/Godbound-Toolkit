@@ -723,7 +723,7 @@ const GoCharacter = {
                 <select class="input-sm gift-field"
                   data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="activation"
                   title="Activation type">
-                  ${['Constant','Instant','On Turn','Action'].map(a =>
+                  ${['Constant','Instant','On Turn','Action','Innate'].map(a =>
                     `<option value="${a}" ${(g.activation || 'Action') === a ? 'selected' : ''}>${a}</option>`
                   ).join('')}
                 </select>
