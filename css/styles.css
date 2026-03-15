@@ -1100,3 +1100,23 @@ tr.apo-gained td { background: rgba(201,168,76,.08); }
   main { padding: 1rem .75rem 3rem; }
   .add-combatant-form .input-main { max-width: 100%; }
 }
+
+/* ─── Data Editor ───────────────────────────────────────── */
+.de-word-block .word-header { flex-wrap: wrap; }
+
+/* Action cell – holds apply + remove buttons side-by-side */
+.de-action-cell {
+  white-space: nowrap;
+  display: flex;
+  gap: .3rem;
+  align-items: center;
+}
+
+/* Apply-to-character button (green-ish secondary style) */
+.btn-secondary {
+  background: var(--blue);
+  color: #fff;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--blue-light);
+}
