@@ -19,6 +19,8 @@ const GoDataEditor = {
     this.data = GoStorage.loadDataTemplates();
     this._ensureStructure();
     this.render();
+    /* Ensure the combat tracker dropdown reflects any saved enemies. */
+    if (typeof GoCombat !== 'undefined') GoCombat.populateStockEnemyDropdown();
   },
 
   _ensureStructure() {
@@ -26,6 +28,7 @@ const GoDataEditor = {
     if (!Array.isArray(this.data.words))     this.data.words     = [];
     if (!Array.isArray(this.data.weapons))   this.data.weapons   = [];
     if (!Array.isArray(this.data.equipment)) this.data.equipment = [];
+    if (!Array.isArray(this.data.enemies))   this.data.enemies   = [];
   },
 
   _save() {
@@ -168,6 +171,22 @@ const GoDataEditor = {
     GoApp.toast(`"${tpl.name}" added to ${char.name}`, 'success');
   },
 
+  /* ─── Enemies ───────────────────────────────────────────────────── */
+
+  addEnemy() {
+    this.data.enemies.push({ id: GoUtils.uid(), name: 'Enemy', hp: 10, ac: 10, notes: '' });
+    this._save();
+    this._renderEnemies();
+    if (typeof GoCombat !== 'undefined') GoCombat.populateStockEnemyDropdown();
+  },
+
+  removeEnemy(id) {
+    this.data.enemies = this.data.enemies.filter(e => e.id !== id);
+    this._save();
+    this._renderEnemies();
+    if (typeof GoCombat !== 'undefined') GoCombat.populateStockEnemyDropdown();
+  },
+
   /* ─── Full render ───────────────────────────────────────────────── */
 
   render() {
@@ -191,7 +210,7 @@ const GoDataEditor = {
           <div class="btn-group">
             <select id="de-word-select" class="input-main" aria-label="Choose word">
               <option value="">— choose word —</option>
-              ${GoUtils.WORDS_OF_POWER.map(w => `<option value="${this._esc(w)}">${w}</option>`).join('')}
+              ${GoUtils.WORDS_OF_POWER.map(w => `<option value="${GoUtils.escHtml(w)}">${w}</option>`).join('')}
             </select>
             <input type="text" id="de-word-custom" class="input-main"
               placeholder="Custom name…" style="display:none" aria-label="Custom word name">
@@ -218,11 +237,26 @@ const GoDataEditor = {
         </div>
         <div id="de-equip-list"></div>
       </div>
+
+      <!-- ══ Stock Enemies ══════════════════════════════════════════ -->
+      <div class="card" id="de-enemies-card">
+        <div class="card-header">
+          <h2 class="card-title">👾 Stock Enemies</h2>
+          <button id="de-add-enemy-btn" class="btn-primary">+ Add Enemy</button>
+        </div>
+        <p class="card-note">
+          Save reusable enemy templates here. In the Combat Tracker, use the
+          <strong>Stock Enemy</strong> dropdown to instantly add a saved enemy
+          to the current encounter.
+        </p>
+        <div id="de-enemies-list"></div>
+      </div>
     `;
 
     this._renderWords();
     this._renderWeapons();
     this._renderEquipment();
+    this._renderEnemies();
     this._attachEvents();
   },
 
@@ -240,7 +274,7 @@ const GoDataEditor = {
     el.innerHTML = this.data.words.map(word => `
       <div class="word-block de-word-block" data-de-word-id="${word.id}">
         <div class="word-header">
-          <span class="word-name">${this._esc(word.name)}</span>
+          <span class="word-name">${GoUtils.escHtml(word.name)}</span>
           <div class="btn-group">
             <select class="input-sm de-gift-type-select" data-word-id="${word.id}" title="Gift type">
               <option value="lesser">Lesser (1pt)</option>
@@ -279,7 +313,7 @@ const GoDataEditor = {
                   }
                 </span>
                 <input type="text" class="input-main de-gift-field"
-                  value="${this._esc(g.name)}"
+                  value="${GoUtils.escHtml(g.name)}"
                   data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="name"
                   placeholder="Gift name" title="Gift name">
                 <select class="input-sm de-gift-field"
@@ -296,7 +330,7 @@ const GoDataEditor = {
                   Smite
                 </label>
                 <input type="text" class="input-sm de-gift-field"
-                  value="${this._esc(g.effort)}"
+                  value="${GoUtils.escHtml(g.effort)}"
                   data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="effort"
                   placeholder="Effort" title="Effort cost (e.g. Scene, Day)">
                 <button class="btn-icon de-remove-gift-btn"
@@ -334,16 +368,16 @@ const GoDataEditor = {
           ${this.data.weapons.map(w => `
             <tr data-de-weapon-id="${w.id}">
               <td><input type="text" class="input-main de-weapon-field"
-                value="${this._esc(w.name)}"
+                value="${GoUtils.escHtml(w.name)}"
                 data-id="${w.id}" data-f="name" aria-label="Weapon name"></td>
               <td><input type="text" class="input-sm de-weapon-field"
-                value="${this._esc(w.damage)}"
+                value="${GoUtils.escHtml(w.damage)}"
                 data-id="${w.id}" data-f="damage" placeholder="1d8" aria-label="Damage dice"></td>
               <td><input type="number" class="input-sm de-weapon-field"
                 value="${w.attackMod}"
                 data-id="${w.id}" data-f="attackMod" aria-label="Attack modifier"></td>
               <td><input type="text" class="input-main de-weapon-field"
-                value="${this._esc(w.notes)}"
+                value="${GoUtils.escHtml(w.notes)}"
                 data-id="${w.id}" data-f="notes" placeholder="Notes" aria-label="Notes"></td>
               <td class="de-action-cell">
                 <button class="btn-secondary de-apply-weapon-btn" data-id="${w.id}"
@@ -379,10 +413,10 @@ const GoDataEditor = {
           ${this.data.equipment.map(e => `
             <tr data-de-equip-id="${e.id}">
               <td><input type="text" class="input-main de-equip-field"
-                value="${this._esc(e.name)}"
+                value="${GoUtils.escHtml(e.name)}"
                 data-id="${e.id}" data-f="name" aria-label="Item name"></td>
               <td><input type="text" class="input-main de-equip-field"
-                value="${this._esc(e.notes)}"
+                value="${GoUtils.escHtml(e.notes)}"
                 data-id="${e.id}" data-f="notes" placeholder="Notes" aria-label="Notes"></td>
               <td class="de-action-cell">
                 <button class="btn-secondary de-apply-equip-btn" data-id="${e.id}"
@@ -394,6 +428,52 @@ const GoDataEditor = {
       </table>`;
 
     this._attachEquipEvents();
+  },
+
+  _renderEnemies() {
+    const el = document.getElementById('de-enemies-list');
+    if (!el) return;
+
+    if (!this.data.enemies.length) {
+      el.innerHTML = '<p class="empty-msg">No enemy templates yet.</p>';
+      return;
+    }
+
+    el.innerHTML = `
+      <table class="equip-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Max HP</th>
+            <th>AC</th>
+            <th>Notes</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${this.data.enemies.map(e => `
+            <tr data-de-enemy-id="${e.id}">
+              <td><input type="text" class="input-main de-enemy-field"
+                value="${GoUtils.escHtml(e.name)}"
+                data-id="${e.id}" data-f="name" aria-label="Enemy name"></td>
+              <td><input type="number" class="input-sm de-enemy-field"
+                value="${e.hp}" min="1"
+                data-id="${e.id}" data-f="hp" aria-label="Max HP"></td>
+              <td><input type="number" class="input-sm de-enemy-field"
+                value="${e.ac}" min="0"
+                data-id="${e.id}" data-f="ac" aria-label="AC"></td>
+              <td><input type="text" class="input-main de-enemy-field"
+                value="${GoUtils.escHtml(e.notes)}"
+                data-id="${e.id}" data-f="notes" placeholder="Notes" aria-label="Notes"></td>
+              <td class="de-action-cell">
+                <button class="btn-icon de-remove-enemy-btn" data-id="${e.id}"
+                  title="Remove enemy template">✕</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+
+    this._attachEnemyEvents();
   },
 
   /* ─── Event binding ─────────────────────────────────────────────── */
@@ -418,6 +498,7 @@ const GoDataEditor = {
 
     document.getElementById('de-add-weapon-btn')?.addEventListener('click', () => this.addWeapon());
     document.getElementById('de-add-equip-btn')?.addEventListener('click',  () => this.addEquipItem());
+    document.getElementById('de-add-enemy-btn')?.addEventListener('click',  () => this.addEnemy());
   },
 
   _attachWordEvents() {
@@ -500,9 +581,22 @@ const GoDataEditor = {
       }));
   },
 
+  _attachEnemyEvents() {
+    document.querySelectorAll('.de-remove-enemy-btn').forEach(btn =>
+      btn.addEventListener('click', () => {
+        if (confirm('Remove this enemy template?')) this.removeEnemy(btn.dataset.id);
+      }));
+
+    document.querySelectorAll('.de-enemy-field').forEach(inp =>
+      inp.addEventListener('change', () => {
+        const item = this.data.enemies.find(e => e.id === inp.dataset.id);
+        if (!item) return;
+        item[inp.dataset.f] = inp.type === 'number' ? (parseInt(inp.value, 10) || 0) : inp.value;
+        this._save();
+        if (typeof GoCombat !== 'undefined') GoCombat.populateStockEnemyDropdown();
+      }));
+  },
+
   /* ─── Helpers ───────────────────────────────────────────────────── */
 
-  _esc(str) {
-    return String(str ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
 };

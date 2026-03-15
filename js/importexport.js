@@ -9,7 +9,7 @@
  *     version:       1,
  *     exported:      "<ISO-8601 timestamp>",
  *     characters:    [...],
- *     dataTemplates: { words: [], weapons: [], equipment: [] },
+ *     dataTemplates: { words: [], weapons: [], equipment: [], enemies: [] },
  *     diceHistory:   [...]
  *   }
  *
@@ -160,7 +160,8 @@ const GoImportExport = {
         GoStorage.saveDataTemplates(fresh);
         tmplCount = (fresh.words || []).length +
                     (fresh.weapons || []).length +
-                    (fresh.equipment || []).length;
+                    (fresh.equipment || []).length +
+                    (fresh.enemies || []).length;
       } else {
         /* merge – append by name; skip if exact name already exists */
         const merged = this._mergeTemplates(existing, incomingTemplates);
@@ -284,7 +285,8 @@ const GoImportExport = {
         gifts:  this._reIdGifts(w.gifts)
       })),
       weapons:   (templates.weapons   || []).map(w => ({ ...w, id: GoUtils.uid() })),
-      equipment: (templates.equipment || []).map(e => ({ ...e, id: GoUtils.uid() }))
+      equipment: (templates.equipment || []).map(e => ({ ...e, id: GoUtils.uid() })),
+      enemies:   (templates.enemies   || []).map(e => ({ ...e, id: GoUtils.uid() }))
     };
   },
 
@@ -322,7 +324,8 @@ const GoImportExport = {
       data: {
         words:     mergeCategory(existing.words     || [], incoming.words),
         weapons:   mergeCategory(existing.weapons   || [], incoming.weapons),
-        equipment: mergeCategory(existing.equipment || [], incoming.equipment)
+        equipment: mergeCategory(existing.equipment || [], incoming.equipment),
+        enemies:   mergeCategory(existing.enemies   || [], incoming.enemies)
       },
       added
     };
