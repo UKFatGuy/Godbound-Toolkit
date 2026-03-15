@@ -293,7 +293,7 @@ const GoCharacter = {
 
         <!-- Saves -->
         <div class="saves-section mt-md">
-          <h3 class="section-subtitle">Savings</h3>
+          <h3 class="section-subtitle">Saving Throws</h3>
           <p class="formula-note">Formula: 16 − Level − Best Attribute Modifier (auto-calculated)</p>
           <div class="saves-grid">
             <div class="save-block">
