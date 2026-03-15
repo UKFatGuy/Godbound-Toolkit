@@ -155,7 +155,7 @@ const GoDice = {
           <p class="card-note">Free damage die against mooks each round.</p>
           <div class="form-row">
             <label class="form-label">Character Level
-              <input id="fray-level" type="number" class="input-sm" value="1" min="1" max="10">
+              <input id="fray-level" type="number" class="input-sm" value="1" min="1" max="30">
             </label>
             <span id="fray-notation" class="fray-badge">1d6</span>
             <button id="fray-roll-btn" class="btn-primary self-end">Roll Fray</button>
