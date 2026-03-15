@@ -626,30 +626,15 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: .15rem;
-  padding: .4rem .25rem;
+  align-items: stretch;
+  padding: .4rem .4rem .3rem;
   text-align: center;
-}
-
-.attr-row {
-  display: flex;
-  gap: .5rem;
-  align-items: center;
-}
-
-.attr-name  { color: var(--text-secondary); font-size: .78rem; font-weight: 600; letter-spacing: .08em; }
-
-.attr-sub-label {
-  font-size: .72rem;
-  color: var(--text-muted);
-  letter-spacing: .05em;
 }
 
 .attr-score {
-  text-align: center;
-  width: 3rem;
-  font-size: 1.45rem;
+  text-align: right;
+  width: 2.8rem;
+  font-size: 1.1rem;
   font-weight: 700;
   border: none;
   background: transparent;
@@ -659,15 +644,11 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .attr-score:focus { border-bottom: 1px solid var(--gold); }
 
 .attr-bonus-input {
-  text-align: center;
+  text-align: right;
   width: 2.5rem;
   padding: .1rem .2rem;
-  font-size: .88rem;
+  font-size: .85rem;
 }
-
-.attr-mod  { font-size: 1.05rem; font-weight: 700; line-height: 1; }
-.mod-pos   { color: var(--green-light); }
-.mod-neg   { color: var(--red-light); }
 
 /* Words of Power */
 .word-block {
@@ -696,6 +677,24 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 .gifts-list { padding: .4rem .6rem; display: flex; flex-direction: column; gap: .3rem; }
 
+.gifts-header {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .15rem 0 .25rem;
+  border-bottom: 2px solid var(--border);
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.gift-col-type   { min-width: 4.5rem; flex-shrink: 0; }
+.gift-col-name   { flex: 1; min-width: 100px; }
+.gift-col-act    { min-width: 5rem; flex-shrink: 0; }
+.gift-col-smite  { min-width: 3.5rem; flex-shrink: 0; }
+.gift-col-effort { min-width: 4rem; flex-shrink: 0; }
+
 .gift-row {
   display: flex;
   align-items: center;
@@ -717,6 +716,304 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   font-size: 1rem;
   padding: 0 .2rem;
 }
+
+/* Gift type badges */
+.gift-type-badge {
+  font-size: .62rem;
+  font-weight: 700;
+  padding: .15rem .35rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  min-width: 4.2rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+.gift-lesser  { background: rgba(83,83,120,.5);  color: var(--text-secondary); }
+.gift-greater { background: rgba(201,168,76,.25); color: var(--gold-light); }
+
+.gift-smite-label {
+  font-size: .75rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Overview layout ───────────────────────────────────── */
+.overview-header {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.overview-name-label { flex: 1; min-width: 200px; }
+.overview-compact { flex-shrink: 0; }
+
+/* Section subtitles */
+.section-subtitle {
+  color: var(--text-secondary);
+  font-size: .88rem;
+  font-weight: 600;
+  margin-bottom: .35rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.card-title-ref {
+  color: var(--text-muted);
+  font-size: .78rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Formula / hint notes */
+.formula-note {
+  color: var(--text-muted);
+  font-size: .75rem;
+  margin-top: .2rem;
+}
+.level-facts-note {
+  color: var(--text-muted);
+  font-size: .75rem;
+  margin-top: .5rem;
+  margin-bottom: .3rem;
+  font-style: italic;
+}
+
+/* Level facts grid */
+.level-facts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: .4rem;
+  margin-top: .3rem;
+}
+.level-fact-item {
+  flex-direction: row !important;
+  align-items: center;
+}
+.level-fact-num {
+  color: var(--gold);
+  font-weight: 700;
+  font-size: .88rem;
+  min-width: 1.5rem;
+  text-align: right;
+  margin-right: .35rem;
+}
+
+/* ─── Attribute block (new PDF layout) ───────────────────── */
+.attr-abbr {
+  color: var(--gold);
+  font-size: .9rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+}
+.attr-full {
+  color: var(--text-muted);
+  font-size: .62rem;
+  letter-spacing: .03em;
+  margin-bottom: .2rem;
+}
+.attr-trow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .1rem 0;
+  width: 100%;
+}
+.attr-row-lbl {
+  color: var(--text-muted);
+  font-size: .6rem;
+  font-weight: 600;
+  letter-spacing: .07em;
+  min-width: 2.4rem;
+}
+.attr-check {
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 1.5rem;
+  text-align: right;
+}
+.attr-mod-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  border-top: 1px solid var(--border);
+  padding-top: .2rem;
+  margin-top: .15rem;
+}
+.attr-mod  { font-size: 1.1rem; font-weight: 700; line-height: 1; }
+.mod-pos   { color: var(--green-light); }
+.mod-neg   { color: var(--red-light); }
+
+/* ─── Saves ─────────────────────────────────────────────── */
+.saves-section { }
+.saves-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .75rem;
+  margin-top: .5rem;
+}
+.save-block {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: .5rem .5rem .4rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .25rem;
+}
+.save-name {
+  color: var(--text-secondary);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+}
+.save-mod-note {
+  color: var(--text-muted);
+  font-size: .65rem;
+}
+.save-input {
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--gold);
+  width: 3.5rem;
+}
+
+/* ─── HP & Armour ────────────────────────────────────────── */
+.hp-armor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 600px) {
+  .hp-armor-grid { grid-template-columns: 1fr; }
+}
+.hp-row {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+/* ─── Combat ─────────────────────────────────────────────── */
+.combat-header-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.combat-info-static {
+  font-size: .88rem;
+  color: var(--text-primary);
+  padding: .3rem .5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.damage-chart {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .4rem .7rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+.damage-chart-title {
+  color: var(--text-secondary);
+  font-size: .78rem;
+  font-weight: 600;
+  margin-right: .25rem;
+}
+.damage-chart-val  { color: var(--gold); font-weight: 700; font-size: .85rem; }
+.damage-chart-sep  { color: var(--text-muted); }
+
+/* ─── Resources ──────────────────────────────────────────── */
+.resource-group { }
+.resource-group + .resource-group { border-top: 1px solid var(--border); padding-top: .75rem; }
+
+/* ─── Apotheosis ─────────────────────────────────────────── */
+.apotheosis-layout {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 700px) {
+  .apotheosis-layout { grid-template-columns: 1fr; }
+}
+.apo-gifts-wrap { overflow-x: auto; }
+.apo-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: .82rem;
+}
+.apo-table th {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: .3rem .5rem;
+  text-align: left;
+  font-size: .72rem;
+  letter-spacing: .04em;
+}
+.apo-table td    { border: 1px solid var(--border); padding: .3rem .5rem; }
+.apo-lvl   { width: 2.5rem; text-align: center; color: var(--gold); font-weight: 700; }
+.apo-name  { color: var(--text-primary); }
+.apo-act   { color: var(--text-secondary); font-size: .78rem; }
+.apo-check { text-align: center; width: 3rem; }
+tr.apo-gained td { background: rgba(201,168,76,.08); }
+
+.apo-ref-tables { display: flex; flex-direction: column; gap: .5rem; }
+.apo-ref-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: .78rem;
+}
+.apo-ref-table caption {
+  color: var(--gold-dim);
+  font-size: .75rem;
+  font-weight: 600;
+  text-align: left;
+  padding-bottom: .2rem;
+  caption-side: top;
+}
+.apo-ref-table th {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: .2rem .4rem;
+  font-size: .7rem;
+}
+.apo-ref-table td {
+  border: 1px solid var(--border);
+  padding: .2rem .4rem;
+  color: var(--text-secondary);
+  font-size: .78rem;
+  text-align: center;
+}
+
+/* ─── Cult ───────────────────────────────────────────────── */
+.cult-stats-row {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.cult-name-label { flex: 1; min-width: 200px; }
+.cult-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .75rem;
+}
+@media (max-width: 700px) {
+  .cult-details-grid { grid-template-columns: 1fr; }
+}
+.shrines-section { }
 
 /* Equipment */
 .equip-section { margin-bottom: 1rem; }
