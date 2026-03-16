@@ -188,6 +188,8 @@ const GoCharacter = {
         </select>
         <button id="char-new-btn"    class="btn-primary">+ New</button>
         <button id="char-delete-btn" class="btn-danger">Delete</button>
+        <button id="char-print-btn"  class="btn-ghost" title="Open a printable character summary in a new window">🖨️ Print</button>
+        <button id="char-share-btn"  class="btn-ghost" title="Copy a shareable link for this character to clipboard">🔗 Share</button>
       </div>
 
       <!-- ══ PAGE 1: Overview ══════════════════════════════════════ -->
@@ -1031,6 +1033,8 @@ const GoCharacter = {
     });
     document.getElementById('char-new-btn')?.addEventListener('click', () => this.createCharacter());
     document.getElementById('char-delete-btn')?.addEventListener('click', () => this.deleteCharacter());
+    document.getElementById('char-print-btn')?.addEventListener('click', () => GoPrint.printCharacter(this.char));
+    document.getElementById('char-share-btn')?.addEventListener('click', () => GoPrint.copyShareLink(this.char));
 
     /* Save button */
     document.getElementById('char-save-btn')?.addEventListener('click', () => this._collectAndSave());
