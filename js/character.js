@@ -40,9 +40,9 @@ const GoCharacter = {
 
       saves: { hardiness: 15, evasion: 15, spirit: 15 },
 
-      effort:    { total: 2, committedDay: 0, committedScene: 0 },
+      effort:    { total: 2, committedDay: 0, committedScene: 0, bonus: 0 },
       dominion:  { total: 0 },
-      influence: { max: 0, current: 0 },
+      influence: { max: 0, current: 0, bonus: 0 },
       wealth:    { total: 0, free: 0 },
 
       apotheosis: {},
@@ -54,12 +54,15 @@ const GoCharacter = {
       },
       shrines: [],
 
-      words:     [],
-      weapons:   [],
-      armor:     [],
-      equipment: [],
-      artifacts: [],
-      notes:     ''
+      words:          [],
+      martialStrifes: [],
+      theurgy:        [],
+      lowMagic:       [],
+      weapons:        [],
+      armor:          [],
+      equipment:      [],
+      artifacts:      [],
+      notes:          ''
     };
   },
 
@@ -67,12 +70,13 @@ const GoCharacter = {
 
   init() {
     this.characters = GoStorage.loadCharacters();
+    this.characters.forEach(char => this._ensureCharacterStructure(char));
     this.activeIdx  = GoStorage.loadActiveCharacter();
     if (!this.characters.length) {
       this.characters.push(this._newCharacter('My Godbound'));
-      GoStorage.saveCharacters(this.characters);
     }
     this.activeIdx = GoUtils.clamp(this.activeIdx, 0, this.characters.length - 1);
+    GoStorage.saveCharacters(this.characters);
     this.render();
   },
 
@@ -82,6 +86,107 @@ const GoCharacter = {
   },
 
   get char() { return this.characters[this.activeIdx]; },
+
+  _ensureCharacterStructure(char) {
+    if (!char || typeof char !== 'object') return;
+    if (!Array.isArray(char.words)) char.words = [];
+    char.words = char.words.map(word => ({
+      ...word,
+      gifts: Array.isArray(word.gifts) ? word.gifts.map(gift => this._normalizeGift(gift)) : []
+    }));
+    if (!Array.isArray(char.weapons)) char.weapons = [];
+    if (!Array.isArray(char.armor)) char.armor = [];
+    if (!Array.isArray(char.equipment)) char.equipment = [];
+    if (!Array.isArray(char.artifacts)) char.artifacts = [];
+    if (!Array.isArray(char.shrines)) char.shrines = [];
+
+    GoUtils.ARCANE_PRACTICES.forEach(cfg => {
+      char[cfg.key] = this._normalizePracticeList(char[cfg.key]);
+    });
+  },
+
+  _normalizePracticeList(list) {
+    return Array.isArray(list)
+      ? list.map(item => ({
+          id: item.id || GoUtils.uid(),
+          name: item.name || '',
+          notes: item.notes || '',
+          entries: Array.isArray(item.entries)
+            ? item.entries.map(entry => ({
+                id: entry.id || GoUtils.uid(),
+                name: entry.name || '',
+                activation: entry.activation || 'Action',
+                effort: entry.effort || '',
+                description: entry.description || '',
+                active: !!entry.active
+              }))
+            : []
+        }))
+      : [];
+  },
+
+  _normalizeGift(gift) {
+    return {
+      id: gift?.id || GoUtils.uid(),
+      name: gift?.name || '',
+      type: gift?.type || 'lesser',
+      activation: gift?.activation || 'Action',
+      smite: !!gift?.smite,
+      effort: gift?.effort || '',
+      description: gift?.description || '',
+      active: !!gift?.active,
+      modifiesAttribute: !!gift?.modifiesAttribute,
+      modAttribute: gift?.modAttribute || 'str',
+      modType: gift?.modType || 'bonus',
+      modValue: Number.isFinite(parseInt(gift?.modValue, 10)) ? parseInt(gift.modValue, 10) : 0
+    };
+  },
+
+  _formatGiftModifierSummary(rawGift) {
+    const gift = this._normalizeGift(rawGift);
+    if (!gift.modifiesAttribute) return '';
+
+    const value = Number.isFinite(parseInt(gift.modValue, 10)) ? parseInt(gift.modValue, 10) : 0;
+    const signed = value >= 0 ? `+${value}` : `${value}`;
+    const attr = String(gift.modAttribute || 'str').toUpperCase();
+    const kind = gift.modType === 'score' ? 'score' : 'bonus';
+    const effect = `${signed} ${attr} ${kind}`;
+
+    if (gift.type !== 'innate' && !gift.active) {
+      return `Inactive: ${effect}`;
+    }
+    return `Applies: ${effect}`;
+  },
+
+  _getGiftAttrAdjustments(attr) {
+    let scoreOverride = null;
+    let bonusAdj = 0;
+
+    (this.char.words || []).forEach(word => {
+      (word.gifts || []).forEach(rawGift => {
+        const gift = this._normalizeGift(rawGift);
+        if (!gift.modifiesAttribute || gift.modAttribute !== attr) return;
+        if (!gift.active && gift.type !== 'innate') return;
+
+        const delta = Number.isFinite(parseInt(gift.modValue, 10)) ? parseInt(gift.modValue, 10) : 0;
+        if (gift.modType === 'score') scoreOverride = delta;
+        else bonusAdj += delta;
+      });
+    });
+
+    return { scoreOverride, bonusAdj };
+  },
+
+  _computeFinalScore(attr) {
+    const scoreEl = document.querySelector(`[data-field="attr-${attr}"]`);
+    const baseScore = scoreEl ? (parseInt(scoreEl.value, 10) || 10) : (this.char.attributes[attr] || 10);
+    const { scoreOverride } = this._getGiftAttrAdjustments(attr);
+    return scoreOverride == null ? baseScore : scoreOverride;
+  },
+
+  _refreshDerivedFromGiftModifiers() {
+    ['str','dex','con','int','wis','cha'].forEach(attr => this._updateAttrMod(attr));
+  },
 
   /* ─── Character CRUD ────────────────────────────────────────────── */
 
@@ -123,14 +228,29 @@ const GoCharacter = {
     this.char.words = this.char.words.filter(w => w.id !== id);
     this._save();
     this._renderWords();
+    this._refreshDerivedFromGiftModifiers();
   },
 
   addGift(wordId, giftName, giftType = 'lesser') {
     const word = this.char.words.find(w => w.id === wordId);
     if (!word || !giftName.trim()) return;
-    word.gifts.push({ id: GoUtils.uid(), name: giftName.trim(), type: giftType, activation: 'Action', smite: false, effort: '', description: '', active: false });
+    word.gifts.push(this._normalizeGift({
+      id: GoUtils.uid(),
+      name: giftName.trim(),
+      type: giftType,
+      activation: 'Action',
+      smite: false,
+      effort: '',
+      description: '',
+      active: false,
+      modifiesAttribute: false,
+      modAttribute: 'str',
+      modType: 'bonus',
+      modValue: 0
+    }));
     this._save();
     this._renderWords();
+    this._refreshDerivedFromGiftModifiers();
   },
 
   removeGift(wordId, giftId) {
@@ -139,6 +259,7 @@ const GoCharacter = {
     word.gifts = word.gifts.filter(g => g.id !== giftId);
     this._save();
     this._renderWords();
+    this._refreshDerivedFromGiftModifiers();
   },
 
   toggleGift(wordId, giftId) {
@@ -149,6 +270,56 @@ const GoCharacter = {
     gift.active = !gift.active;
     this._save();
     this._renderWords();
+    this._refreshDerivedFromGiftModifiers();
+  },
+
+  addPractice(category, name) {
+    const cfg = GoUtils.getArcanePracticeConfig(category);
+    if (!cfg || !name || !name.trim()) return;
+    this.char[category].push({ id: GoUtils.uid(), name: name.trim(), notes: '', entries: [] });
+    this._save();
+    this._renderArcaneArts();
+  },
+
+  removePractice(category, practiceId) {
+    const cfg = GoUtils.getArcanePracticeConfig(category);
+    if (!cfg) return;
+    this.char[category] = this.char[category].filter(item => item.id !== practiceId);
+    this._save();
+    this._renderArcaneArts();
+  },
+
+  addPracticeEntry(category, practiceId, name) {
+    const practice = (this.char[category] || []).find(item => item.id === practiceId);
+    if (!practice || !name || !name.trim()) return;
+    practice.entries.push({
+      id: GoUtils.uid(),
+      name: name.trim(),
+      activation: 'Action',
+      effort: '',
+      description: '',
+      active: false
+    });
+    this._save();
+    this._renderArcaneArts();
+  },
+
+  removePracticeEntry(category, practiceId, entryId) {
+    const practice = (this.char[category] || []).find(item => item.id === practiceId);
+    if (!practice) return;
+    practice.entries = practice.entries.filter(entry => entry.id !== entryId);
+    this._save();
+    this._renderArcaneArts();
+  },
+
+  togglePracticeEntry(category, practiceId, entryId) {
+    const practice = (this.char[category] || []).find(item => item.id === practiceId);
+    if (!practice) return;
+    const entry = practice.entries.find(item => item.id === entryId);
+    if (!entry) return;
+    entry.active = !entry.active;
+    this._save();
+    this._renderArcaneArts();
   },
 
   /* ─── Equipment ─────────────────────────────────────────────────── */
@@ -173,6 +344,7 @@ const GoCharacter = {
     if (!el) return;
 
     const c = this.char;
+    this._ensureCharacterStructure(c);
     const cult      = c.cult      || {};
     const wealth    = c.wealth    || {};
     const apo       = c.apotheosis || {};
@@ -188,8 +360,6 @@ const GoCharacter = {
         </select>
         <button id="char-new-btn"    class="btn-primary">+ New</button>
         <button id="char-delete-btn" class="btn-danger">Delete</button>
-        <button id="char-print-btn"  class="btn-ghost" title="Open a printable character summary in a new window">🖨️ Print</button>
-        <button id="char-share-btn"  class="btn-ghost" title="Copy a shareable link for this character to clipboard">🔗 Share</button>
       </div>
 
       <!-- ══ PAGE 1: Overview ══════════════════════════════════════ -->
@@ -332,7 +502,7 @@ const GoCharacter = {
         <div class="hp-armor-grid">
           <div class="hp-section">
             <h3 class="section-subtitle">Hit Points</h3>
-            <p class="formula-note">1st Lvl: 8 + CON mod &nbsp;|&nbsp; Each level after: 4 + ½ CON mod</p>
+            <p class="formula-note">8 + CON Modifier at Level 1, +4 + 1/2 CON Modifier (rounded up) each additional level, + Bonus (auto-calculated)</p>
             <div class="hp-row mt-sm">
               <label class="form-label">
                 Maximum
@@ -451,10 +621,15 @@ const GoCharacter = {
         <!-- Effort -->
         <div class="resource-group mt-sm">
           <h3 class="section-subtitle">Effort</h3>
+          <p class="formula-note">2 at Level 1, +1 per Level, + Bonuses (auto-calculated)</p>
           <div class="form-grid">
             <label class="form-label">Total Effort
               <input type="number" class="input-sm" data-field="effort-total"
-                value="${c.effort.total}" min="0" max="10">
+                value="${c.effort.total}" min="0" max="10" readonly>
+            </label>
+            <label class="form-label">Effort Bonus
+              <input type="number" class="input-sm" data-field="effort-bonus"
+                value="${c.effort.bonus || 0}" min="0">
             </label>
             <label class="form-label">Committed (Day)
               <input type="number" class="input-sm" data-field="effort-day"
@@ -474,11 +649,15 @@ const GoCharacter = {
         <!-- Influence -->
         <div class="resource-group mt-sm">
           <h3 class="section-subtitle">Influence</h3>
-          <p class="formula-note">Without a Cult: 1 + 1 per 3 levels</p>
+          <p class="formula-note">2 at Level 1, +1 per additional level, + Bonuses (auto-calculated)</p>
           <div class="form-grid mt-sm">
             <label class="form-label">Influence (Max)
               <input type="number" class="input-sm" data-field="influence-max"
-                value="${c.influence.max}" min="0">
+                value="${c.influence.max}" min="0" readonly>
+            </label>
+            <label class="form-label">Influence Bonus
+              <input type="number" class="input-sm" data-field="influence-bonus"
+                value="${c.influence.bonus || 0}" min="0">
             </label>
             <label class="form-label">Influence (Used)
               <input type="number" class="input-sm" data-field="influence-current"
@@ -521,6 +700,17 @@ const GoCharacter = {
           </div>
         </div>
         <div id="words-list"></div>
+      </div>
+
+      <!-- ══ PAGE 3B: Arcane Arts ══════════════════════════════════ -->
+      <div class="card" id="arcane-arts-section">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Arcane Arts</h2>
+            <p class="formula-note">Track Martial Strifes, Theurgy, and Low Magic traditions alongside Words of Power.</p>
+          </div>
+        </div>
+        <div id="arcane-arts-list"></div>
       </div>
 
       <!-- ══ PAGE 4 UPPER: Apotheosis Gifts ════════════════════════ -->
@@ -679,9 +869,11 @@ const GoCharacter = {
     `;
 
     this._renderWords();
+    this._renderArcaneArts();
     this._renderEquipment();
     this._renderShrines();
     this._attachCharEvents();
+    this._refreshDerivedFromGiftModifiers();
   },
 
   /* ─── Words render ──────────────────────────────────────────────── */
@@ -720,8 +912,11 @@ const GoCharacter = {
               <span class="gift-col-act">Activation</span>
               <span class="gift-col-smite">Smite</span>
               <span class="gift-col-effort">Effort</span>
+              <span class="gift-col-attr">Attribute Mod</span>
             </div>
-            ${word.gifts.map(g => `
+            ${word.gifts.map(rawGift => {
+              const g = this._normalizeGift(rawGift);
+              return `
               <div class="gift-row ${g.active ? 'gift-active' : ''}" data-gift-id="${g.id}">
                 <button class="gift-toggle-btn" data-word-id="${word.id}" data-gift-id="${g.id}"
                   title="Toggle active">${g.active ? '◉' : '○'}</button>
@@ -753,18 +948,137 @@ const GoCharacter = {
                 <input type="text" class="input-sm gift-field" value="${this._esc(g.effort)}"
                   data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="effort"
                   placeholder="Effort" title="Committed Effort (e.g. Scene, Day)">
+                <label class="checkbox-label gift-modify-label" title="Enable attribute modifier">
+                  <input type="checkbox" class="gift-field"
+                    data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="modifiesAttribute"
+                    ${g.modifiesAttribute ? 'checked' : ''}>
+                  Mod Attr
+                </label>
+                ${g.modifiesAttribute ? `
+                  <div class="gift-modifier-controls">
+                    <select class="input-sm gift-field"
+                      data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="modAttribute"
+                      title="Affected attribute">
+                      ${[
+                        ['str','STR'], ['dex','DEX'], ['con','CON'],
+                        ['int','INT'], ['wis','WIS'], ['cha','CHA']
+                      ].map(([v,l]) => `<option value="${v}" ${g.modAttribute === v ? 'selected' : ''}>${l}</option>`).join('')}
+                    </select>
+                    <select class="input-sm gift-field"
+                      data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="modType"
+                      title="Modifier type">
+                      <option value="bonus" ${g.modType === 'bonus' ? 'selected' : ''}>Bonus</option>
+                      <option value="score" ${g.modType === 'score' ? 'selected' : ''}>Score</option>
+                    </select>
+                    <input type="number" class="input-sm gift-field"
+                      data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="modValue"
+                      value="${g.modValue || 0}" min="-20" max="20" title="Modifier value">
+                    <span class="gift-modifier-summary ${g.type !== 'innate' && !g.active ? 'is-inactive' : 'is-active'}"
+                      title="Resolved modifier summary">${this._esc(this._formatGiftModifierSummary(g))}</span>
+                  </div>` : ''}
                 <button class="btn-icon remove-gift-btn"
                   data-word-id="${word.id}" data-gift-id="${g.id}" title="Remove gift">✕</button>
                 <textarea class="gift-description gift-field"
                   data-word-id="${word.id}" data-gift-id="${g.id}" data-gift-field="description"
                   placeholder="Description…" rows="2">${this._esc(g.description || '')}</textarea>
-              </div>`
-            ).join('')}
+              </div>`;
+            }).join('')}
           </div>` : '<p class="empty-msg-sm">No gifts yet.</p>'}
       </div>`
     ).join('');
 
     this._attachWordEvents();
+  },
+
+  _renderArcaneArts() {
+    const el = document.getElementById('arcane-arts-list');
+    if (!el) return;
+
+    el.innerHTML = GoUtils.ARCANE_PRACTICES.map(cfg => {
+      const items = this.char[cfg.key] || [];
+      return `
+        <section class="practice-category" data-practice-category="${cfg.key}">
+          <div class="card-header practice-category-header">
+            <div>
+              <h3 class="section-subtitle">${cfg.title} <span class="card-title-ref">(${cfg.reference})</span></h3>
+              <p class="formula-note">Add ${cfg.itemLabelPlural.toLowerCase()} and manage their ${cfg.entryLabelPlural.toLowerCase()} here.</p>
+            </div>
+            <div class="btn-group">
+              <input type="text" class="input-sm practice-name-input"
+                data-practice-category="${cfg.key}"
+                placeholder="${cfg.addPlaceholder}" maxlength="80">
+              <button class="btn-ghost add-practice-btn" data-practice-category="${cfg.key}">+ ${cfg.itemLabel}</button>
+            </div>
+          </div>
+          <div class="practice-list">
+            ${items.length ? items.map(item => this._renderPracticeBlock(cfg, item)).join('') : `<p class="empty-msg-sm">No ${cfg.itemLabelPlural.toLowerCase()} yet.</p>`}
+          </div>
+        </section>`;
+    }).join('');
+
+    this._attachArcaneEvents();
+  },
+
+  _renderPracticeBlock(cfg, item) {
+    return `
+      <div class="word-block practice-block" data-practice-category="${cfg.key}" data-practice-id="${item.id}">
+        <div class="word-header practice-header">
+          <input type="text" class="input-main practice-field practice-title-input"
+            value="${this._esc(item.name)}"
+            data-practice-category="${cfg.key}" data-practice-id="${item.id}" data-practice-field="name"
+            placeholder="${cfg.addPlaceholder}" aria-label="${cfg.itemLabel} name">
+          <div class="btn-group">
+            <input type="text" class="input-sm practice-entry-name-input"
+              data-practice-category="${cfg.key}" data-practice-id="${item.id}"
+              placeholder="${cfg.entryPlaceholder}" maxlength="80">
+            <button class="btn-ghost add-practice-entry-btn"
+              data-practice-category="${cfg.key}" data-practice-id="${item.id}">+ ${cfg.entryLabel}</button>
+            <button class="btn-danger remove-practice-btn"
+              data-practice-category="${cfg.key}" data-practice-id="${item.id}">Remove</button>
+          </div>
+        </div>
+        <div class="practice-notes-wrap">
+          <textarea class="notes-area practice-field practice-notes"
+            data-practice-category="${cfg.key}" data-practice-id="${item.id}" data-practice-field="notes"
+            placeholder="${cfg.itemLabel} notes…" rows="2">${this._esc(item.notes || '')}</textarea>
+        </div>
+        ${item.entries.length ? `
+          <div class="gifts-list practice-entries-list">
+            <div class="gifts-header">
+              <span class="gift-col-type">On</span>
+              <span class="gift-col-name">${cfg.entryLabel}</span>
+              <span class="gift-col-act">Activation</span>
+              <span class="gift-col-effort">Effort</span>
+            </div>
+            ${item.entries.map(entry => `
+              <div class="gift-row ${entry.active ? 'gift-active' : ''}" data-practice-entry-id="${entry.id}">
+                <button class="gift-toggle-btn practice-entry-toggle-btn"
+                  data-practice-category="${cfg.key}" data-practice-id="${item.id}" data-practice-entry-id="${entry.id}"
+                  title="Toggle active">${entry.active ? '◉' : '○'}</button>
+                <input type="text" class="input-main practice-entry-field"
+                  value="${this._esc(entry.name)}"
+                  data-practice-category="${cfg.key}" data-practice-id="${item.id}" data-practice-entry-id="${entry.id}" data-practice-entry-field="name"
+                  placeholder="${cfg.entryLabel} name" aria-label="${cfg.entryLabel} name">
+                <select class="input-sm practice-entry-field"
+                  data-practice-category="${cfg.key}" data-practice-id="${item.id}" data-practice-entry-id="${entry.id}" data-practice-entry-field="activation"
+                  title="Activation type">
+                  ${['Constant','Instant','On Turn','Action'].map(a =>
+                    `<option value="${a}" ${(entry.activation || 'Action') === a ? 'selected' : ''}>${a}</option>`
+                  ).join('')}
+                </select>
+                <input type="text" class="input-sm practice-entry-field"
+                  value="${this._esc(entry.effort || '')}"
+                  data-practice-category="${cfg.key}" data-practice-id="${item.id}" data-practice-entry-id="${entry.id}" data-practice-entry-field="effort"
+                  placeholder="Effort" aria-label="Effort cost">
+                <button class="btn-icon remove-practice-entry-btn"
+                  data-practice-category="${cfg.key}" data-practice-id="${item.id}" data-practice-entry-id="${entry.id}"
+                  title="Remove ${cfg.entryLabel.toLowerCase()}">✕</button>
+                <textarea class="gift-description practice-entry-field"
+                  data-practice-category="${cfg.key}" data-practice-id="${item.id}" data-practice-entry-id="${entry.id}" data-practice-entry-field="description"
+                  placeholder="Description…" rows="2">${this._esc(entry.description || '')}</textarea>
+              </div>`).join('')}
+          </div>` : `<p class="empty-msg-sm">No ${cfg.entryLabelPlural.toLowerCase()} yet.</p>`}
+      </div>`;
   },
 
   /* ─── Equipment render ──────────────────────────────────────────── */
@@ -912,14 +1226,16 @@ const GoCharacter = {
     const bonusEl = document.querySelector(`[data-field="bonus-${attr}"]`);
     const modEl   = document.getElementById(`attr-mod-${attr}`);
     if (!scoreEl || !bonusEl || !modEl) return;
-    const score = parseInt(scoreEl.value, 10) || 10;
+    const score = this._computeFinalScore(attr);
     const bonus = parseInt(bonusEl.value, 10) || 0;
-    const mod   = GoUtils.getAttrMod(score) + bonus;
+    const { bonusAdj } = this._getGiftAttrAdjustments(attr);
+    const mod   = GoUtils.getAttrMod(score) + bonus + bonusAdj;
     modEl.textContent = GoUtils.formatMod(mod);
     modEl.className   = `attr-mod ${mod >= 0 ? 'mod-pos' : 'mod-neg'}`;
     const checkEl = document.getElementById(`attr-check-${attr}`);
     if (checkEl) checkEl.textContent = 21 - score;
     this._updateSaves();
+    if (attr === 'con') this._updateHPMax();
   },
 
   _computeHPMax() {
@@ -943,19 +1259,22 @@ const GoCharacter = {
     if (maxEl) maxEl.value = max;
     if (!this.char.hp) this.char.hp = { max, current: max, bonus: 0 };
     this.char.hp.max = max;
-    // clamp current HP to max
+    // Keep current HP within valid range after recalculation.
     if (curEl) {
-      const cur = parseInt(curEl.value, 10) || 0;
-      if (cur > max) { curEl.value = max; this.char.hp.current = max; }
+      const parsedCur = parseInt(curEl.value, 10);
+      const cur = Number.isNaN(parsedCur) ? max : parsedCur;
+      const clamped = GoUtils.clamp(cur, 0, max);
+      curEl.value = clamped;
+      this.char.hp.current = clamped;
     }
   },
 
   _computeFinalMod(attr) {
-    const scoreEl = document.querySelector(`[data-field="attr-${attr}"]`);
     const bonusEl = document.querySelector(`[data-field="bonus-${attr}"]`);
-    const score = scoreEl ? (parseInt(scoreEl.value, 10) || 10) : (this.char.attributes[attr] || 10);
+    const score = this._computeFinalScore(attr);
     const bonus = bonusEl ? (parseInt(bonusEl.value, 10) || 0) : ((this.char.attrBonuses && this.char.attrBonuses[attr]) || 0);
-    return GoUtils.getAttrMod(score) + bonus;
+    const { bonusAdj } = this._getGiftAttrAdjustments(attr);
+    return GoUtils.getAttrMod(score) + bonus + bonusAdj;
   },
 
   _armorTypeToBaseAC(type) {
@@ -1014,6 +1333,50 @@ const GoCharacter = {
     this._updateAC();
   },
 
+  _updateInfluence() {
+    const levelEl = document.querySelector('[data-field="level"]');
+    const level = levelEl ? (parseInt(levelEl.value, 10) || this.char.level || 1) : (this.char.level || 1);
+    
+    const bonusEl = document.querySelector('[data-field="influence-bonus"]');
+    const bonus = bonusEl ? (parseInt(bonusEl.value, 10) || 0) : (this.char.influence?.bonus || 0);
+    
+    // Formula: 2 at Level 1, +1 per additional level, + Bonuses
+    // = 1 + level + bonus
+    const maxInfluence = 1 + level + bonus;
+    
+    const maxEl = document.querySelector('[data-field="influence-max"]');
+    if (maxEl) {
+      maxEl.value = maxInfluence;
+    }
+    
+    if (this.char && this.char.influence) {
+      this.char.influence.max = maxInfluence;
+      this.char.influence.bonus = bonus;
+    }
+  },
+
+  _updateEffort() {
+    const levelEl = document.querySelector('[data-field="level"]');
+    const level = levelEl ? (parseInt(levelEl.value, 10) || this.char.level || 1) : (this.char.level || 1);
+    
+    const bonusEl = document.querySelector('[data-field="effort-bonus"]');
+    const bonus = bonusEl ? (parseInt(bonusEl.value, 10) || 0) : (this.char.effort?.bonus || 0);
+    
+    // Formula: 2 at Level 1, +1 per level, + Bonuses
+    // = 1 + level + bonus
+    const totalEffort = 1 + level + bonus;
+    
+    const totalEl = document.querySelector('[data-field="effort-total"]');
+    if (totalEl) {
+      totalEl.value = totalEffort;
+    }
+    
+    if (this.char && this.char.effort) {
+      this.char.effort.total = totalEffort;
+      this.char.effort.bonus = bonus;
+    }
+  },
+
   _updateLevelFacts() {
     const levelEl = document.querySelector('[data-field="level"]');
     const parsed = levelEl ? parseInt(levelEl.value, 10) : NaN;
@@ -1022,6 +1385,20 @@ const GoCharacter = {
       const factLevel = parseInt(el.dataset.levelFactRow, 10);
       el.style.display = factLevel <= level ? '' : 'none';
     });
+  },
+
+  _recalculateDerived() {
+    this._updateSaves();
+    this._updateHPMax();
+    this._updateAC();
+    this._updateInfluence();
+    this._updateEffort();
+
+    const c = this.char;
+    const avail = document.querySelector('.effort-avail');
+    if (avail && c && c.effort) {
+      avail.textContent = c.effort.total - c.effort.committedDay - c.effort.committedScene;
+    }
   },
 
   /* ─── Event binding ─────────────────────────────────────────────── */
@@ -1033,8 +1410,6 @@ const GoCharacter = {
     });
     document.getElementById('char-new-btn')?.addEventListener('click', () => this.createCharacter());
     document.getElementById('char-delete-btn')?.addEventListener('click', () => this.deleteCharacter());
-    document.getElementById('char-print-btn')?.addEventListener('click', () => GoPrint.printCharacter(this.char));
-    document.getElementById('char-share-btn')?.addEventListener('click', () => GoPrint.copyShareLink(this.char));
 
     /* Save button */
     document.getElementById('char-save-btn')?.addEventListener('click', () => this._collectAndSave());
@@ -1066,13 +1441,29 @@ const GoCharacter = {
         ?.addEventListener('input', () => this._updateAttrMod(attr));
     });
 
-    /* Recalculate saves when level changes */
-    document.querySelector('[data-field="level"]')
-      ?.addEventListener('input', () => { this._updateSaves(); this._updateLevelFacts(); });
+    /* Recalculate derived values when level changes */
+    const levelInput = document.querySelector('[data-field="level"]');
+    levelInput?.addEventListener('input', () => { this._updateLevelFacts(); this._recalculateDerived(); });
+    levelInput?.addEventListener('change', () => { this._updateLevelFacts(); this._recalculateDerived(); });
 
     /* Recalculate HP when HP bonus changes */
-    document.querySelector('[data-field="hp-max-bonus"]')
-      ?.addEventListener('input', () => { this._updateHPMax(); });
+    const hpBonusInput = document.querySelector('[data-field="hp-max-bonus"]');
+    hpBonusInput?.addEventListener('input', () => { this._updateHPMax(); });
+    hpBonusInput?.addEventListener('change', () => { this._updateHPMax(); });
+
+    /* Ensure HP recalculates whenever Constitution score/bonus changes */
+    const conScoreInput = document.querySelector('[data-field="attr-con"]');
+    const conBonusInput = document.querySelector('[data-field="bonus-con"]');
+    conScoreInput?.addEventListener('change', () => { this._updateHPMax(); });
+    conBonusInput?.addEventListener('change', () => { this._updateHPMax(); });
+
+    /* Recalculate Effort when bonus changes */
+    document.querySelector('[data-field="effort-bonus"]')
+      ?.addEventListener('input', () => { this._updateEffort(); });
+
+    /* Recalculate Influence when bonus changes */
+    document.querySelector('[data-field="influence-bonus"]')
+      ?.addEventListener('input', () => { this._updateInfluence(); });
 
     /* Recalculate AC when armour settings change */
     document.querySelector('[data-field="armor-type"]')
@@ -1134,10 +1525,96 @@ const GoCharacter = {
         if (!word) return;
         const gift = word.gifts.find(g => g.id === inp.dataset.giftId);
         if (!gift) return;
-        gift[inp.dataset.giftField] = inp.type === 'checkbox' ? inp.checked : inp.value;
+        const field = inp.dataset.giftField;
+        if (field === 'modifiesAttribute') {
+          gift[field] = inp.checked;
+          this._save();
+          this._renderWords();
+          this._refreshDerivedFromGiftModifiers();
+          return;
+        }
+        gift[field] = inp.type === 'checkbox'
+          ? inp.checked
+          : inp.type === 'number'
+            ? (parseInt(inp.value, 10) || 0)
+            : inp.value;
         this._save();
+        if (field === 'modAttribute' || field === 'modType' || field === 'modValue') {
+          this._refreshDerivedFromGiftModifiers();
+        }
       });
     });
+  },
+
+  _attachArcaneEvents() {
+    document.querySelectorAll('.add-practice-btn').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const category = btn.dataset.practiceCategory;
+        const input = document.querySelector(`.practice-name-input[data-practice-category="${category}"]`);
+        if (!input) return;
+        this.addPractice(category, input.value);
+        input.value = '';
+      }));
+
+    document.querySelectorAll('.practice-name-input').forEach(input =>
+      input.addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        this.addPractice(input.dataset.practiceCategory, input.value);
+        input.value = '';
+      }));
+
+    document.querySelectorAll('.remove-practice-btn').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const category = btn.dataset.practiceCategory;
+        const cfg = GoUtils.getArcanePracticeConfig(category);
+        if (!cfg) return;
+        if (confirm(`Remove this ${cfg.itemLabel.toLowerCase()}?`)) {
+          this.removePractice(category, btn.dataset.practiceId);
+        }
+      }));
+
+    document.querySelectorAll('.add-practice-entry-btn').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const category = btn.dataset.practiceCategory;
+        const practiceId = btn.dataset.practiceId;
+        const input = document.querySelector(`.practice-entry-name-input[data-practice-category="${category}"][data-practice-id="${practiceId}"]`);
+        if (!input) return;
+        this.addPracticeEntry(category, practiceId, input.value);
+        input.value = '';
+      }));
+
+    document.querySelectorAll('.practice-entry-name-input').forEach(input =>
+      input.addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        this.addPracticeEntry(input.dataset.practiceCategory, input.dataset.practiceId, input.value);
+        input.value = '';
+      }));
+
+    document.querySelectorAll('.remove-practice-entry-btn').forEach(btn =>
+      btn.addEventListener('click', () =>
+        this.removePracticeEntry(btn.dataset.practiceCategory, btn.dataset.practiceId, btn.dataset.practiceEntryId)));
+
+    document.querySelectorAll('.practice-entry-toggle-btn').forEach(btn =>
+      btn.addEventListener('click', () =>
+        this.togglePracticeEntry(btn.dataset.practiceCategory, btn.dataset.practiceId, btn.dataset.practiceEntryId)));
+
+    document.querySelectorAll('.practice-field').forEach(input =>
+      input.addEventListener('change', () => {
+        const practice = (this.char[input.dataset.practiceCategory] || []).find(item => item.id === input.dataset.practiceId);
+        if (!practice) return;
+        practice[input.dataset.practiceField] = input.value;
+        this._save();
+      }));
+
+    document.querySelectorAll('.practice-entry-field').forEach(input =>
+      input.addEventListener('change', () => {
+        const practice = (this.char[input.dataset.practiceCategory] || []).find(item => item.id === input.dataset.practiceId);
+        if (!practice) return;
+        const entry = practice.entries.find(item => item.id === input.dataset.practiceEntryId);
+        if (!entry) return;
+        entry[input.dataset.practiceEntryField] = input.value;
+        this._save();
+      }));
   },
 
   _attachShrineEvents() {
@@ -1212,9 +1689,11 @@ const GoCharacter = {
       'effort-total':     v => c.effort.total      = parseInt(v,10)||0,
       'effort-day':       v => c.effort.committedDay   = parseInt(v,10)||0,
       'effort-scene':     v => c.effort.committedScene = parseInt(v,10)||0,
+      'effort-bonus':     v => c.effort.bonus      = parseInt(v,10)||0,
       'dominion':         v => c.dominion.total    = parseInt(v,10)||0,
       'influence-current':v => c.influence.current = parseInt(v,10)||0,
       'influence-max':    v => c.influence.max     = parseInt(v,10)||0,
+      'influence-bonus':  v => c.influence.bonus   = parseInt(v,10)||0,
       'wealth-total':     v => { if (!c.wealth) c.wealth = {}; c.wealth.total = parseInt(v,10)||0; },
       'wealth-free':      v => { if (!c.wealth) c.wealth = {}; c.wealth.free  = parseInt(v,10)||0; },
       'cult-name':        v => { if (!c.cult) c.cult = {}; c.cult.name      = v; },
@@ -1258,16 +1737,12 @@ const GoCharacter = {
       c.apotheosis[cb.dataset.apoGift] = cb.checked;
     });
 
-    this._save();
-
     /* Refresh fray dice display and attr mods */
     document.querySelectorAll('.attr-block').forEach(block => {
       const inp  = block.querySelector('[data-field^="attr-"]');
       if (!inp) return;
       const attr = inp.dataset.field.slice(5);
-      const bonusInp = block.querySelector('[data-field^="bonus-"]');
-      const bonus = bonusInp ? (parseInt(bonusInp.value, 10) || 0) : 0;
-      const mod  = GoUtils.getAttrMod(c.attributes[attr]) + bonus;
+      const mod  = this._computeFinalMod(attr);
       const modEl = block.querySelector('.attr-mod');
       if (modEl) {
         modEl.textContent = GoUtils.formatMod(mod);
@@ -1275,28 +1750,21 @@ const GoCharacter = {
       }
     });
 
-    /* Ensure saves are recalculated to match initial values */
-    this._updateSaves();
+    /* Recalculate derived values before persisting so computed fields are saved */
+    this._recalculateDerived();
+
+    this._save();
 
     const frayEl = document.querySelector('[data-field="level"]');
 
-      /* Ensure HP max is calculated after rendering */
-      this._updateHPMax();
     if (frayEl) {
       const badge = document.querySelector('.fray-badge');
       if (badge) badge.textContent = GoUtils.getFrayDiceDisplay(c.level, c.frayBonusDice);
     }
 
-    /* Ensure AC is recalculated after collecting all values */
-    this._updateAC();
-
     /* Update char selector label */
     const sel = document.getElementById('char-select');
     if (sel) sel.options[this.activeIdx].text = c.name;
-
-    /* Effort available */
-    const avail = document.querySelector('.effort-avail');
-    if (avail) avail.textContent = c.effort.total - c.effort.committedDay - c.effort.committedScene;
 
     const status = document.getElementById('save-status');
     if (status) {

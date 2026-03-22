@@ -16,7 +16,6 @@ const GoApp = {
     GoDataEditor.init();
     this._setupImportExport();
     this._restoreActiveTab();
-    GoPrint.checkShareParam();
   },
 
   /* ─── Tab navigation ────────────────────────────────────────────── */

@@ -161,7 +161,8 @@ const GoImportExport = {
         tmplCount = (fresh.words || []).length +
                     (fresh.weapons || []).length +
                     (fresh.equipment || []).length +
-                    (fresh.enemies || []).length;
+                    (fresh.enemies || []).length +
+                    GoUtils.ARCANE_PRACTICES.reduce((sum, cfg) => sum + ((fresh[cfg.key] || []).length), 0);
       } else {
         /* merge – append by name; skip if exact name already exists */
         const merged = this._mergeTemplates(existing, incomingTemplates);
@@ -278,7 +279,7 @@ const GoImportExport = {
 
   /** Assign fresh ids to every item in a templates object. */
   _reIdTemplates(templates) {
-    return {
+    const base = {
       words: (templates.words || []).map(w => ({
         ...w,
         id:     GoUtils.uid(),
@@ -288,11 +289,29 @@ const GoImportExport = {
       equipment: (templates.equipment || []).map(e => ({ ...e, id: GoUtils.uid() })),
       enemies:   (templates.enemies   || []).map(e => ({ ...e, id: GoUtils.uid() }))
     };
+
+    GoUtils.ARCANE_PRACTICES.forEach(cfg => {
+      base[cfg.key] = this._reIdPracticeTemplates(templates[cfg.key]);
+    });
+
+    return base;
   },
 
   /** Return a copy of a gifts array with fresh ids on every entry. */
   _reIdGifts(gifts) {
     return (gifts || []).map(g => ({ ...g, id: GoUtils.uid() }));
+  },
+
+  _reIdPracticeTemplates(practices) {
+    return (practices || []).map(item => ({
+      ...item,
+      id: GoUtils.uid(),
+      entries: this._reIdPracticeEntries(item.entries)
+    }));
+  },
+
+  _reIdPracticeEntries(entries) {
+    return (entries || []).map(entry => ({ ...entry, id: GoUtils.uid() }));
   },
 
   /**
@@ -315,7 +334,8 @@ const GoImportExport = {
         toAdd.map(x => ({
           ...x,
           id:    GoUtils.uid(),
-          gifts: this._reIdGifts(x.gifts)
+          gifts: x.gifts ? this._reIdGifts(x.gifts) : undefined,
+          entries: x.entries ? this._reIdPracticeEntries(x.entries) : undefined
         }))
       );
     };
@@ -325,7 +345,11 @@ const GoImportExport = {
         words:     mergeCategory(existing.words     || [], incoming.words),
         weapons:   mergeCategory(existing.weapons   || [], incoming.weapons),
         equipment: mergeCategory(existing.equipment || [], incoming.equipment),
-        enemies:   mergeCategory(existing.enemies   || [], incoming.enemies)
+        enemies:   mergeCategory(existing.enemies   || [], incoming.enemies),
+        ...GoUtils.ARCANE_PRACTICES.reduce((acc, cfg) => {
+          acc[cfg.key] = mergeCategory(existing[cfg.key] || [], incoming[cfg.key]);
+          return acc;
+        }, {})
       },
       added
     };

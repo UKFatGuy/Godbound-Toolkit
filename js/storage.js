@@ -54,5 +54,15 @@ const GoStorage = {
   loadDiceHistory()          { return this.load(this.KEYS.DICE_HISTORY, []); },
 
   saveDataTemplates(data)    { return this.save(this.KEYS.DATA_TEMPLATES, data); },
-  loadDataTemplates()        { return this.load(this.KEYS.DATA_TEMPLATES, { words: [], weapons: [], equipment: [], enemies: [] }); }
+  loadDataTemplates()        {
+    return this.load(this.KEYS.DATA_TEMPLATES, {
+      words: [],
+      martialStrifes: [],
+      theurgy: [],
+      lowMagic: [],
+      weapons: [],
+      equipment: [],
+      enemies: []
+    });
+  }
 };

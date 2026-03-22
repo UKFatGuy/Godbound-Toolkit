@@ -1,0 +1,1 @@
+{\n  "dependencies": {\n    "ws": ">=0.0.0",\n    "express": ">=0.0.0"\n  },\n  "scripts": {\n    "start": "node server.js"\n  }\n}

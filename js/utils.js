@@ -114,6 +114,202 @@ const GoUtils = {
     'Valor','Wealth','Wyrd','(Custom)'
   ],
 
+  ARCANE_PRACTICES: [
+    {
+      key: 'martialStrifes',
+      title: 'Martial Strifes',
+      templateTitle: 'Martial Strifes',
+      itemLabel: 'Strife',
+      itemLabelPlural: 'Strifes',
+      entryLabel: 'Technique',
+      entryLabelPlural: 'Techniques',
+      addPlaceholder: 'Martial Strife name…',
+      entryPlaceholder: 'Technique name…',
+      reference: 'Deluxe Edition'
+    },
+    {
+      key: 'theurgy',
+      title: 'Theurgy',
+      templateTitle: 'Theurgy',
+      itemLabel: 'Path',
+      itemLabelPlural: 'Paths',
+      entryLabel: 'Invocation',
+      entryLabelPlural: 'Invocations',
+      addPlaceholder: 'Theurgic path name…',
+      entryPlaceholder: 'Invocation name…',
+      reference: 'Deluxe Edition'
+    },
+    {
+      key: 'lowMagic',
+      title: 'Low Magic',
+      templateTitle: 'Low Magic',
+      itemLabel: 'Tradition',
+      itemLabelPlural: 'Traditions',
+      entryLabel: 'Spell',
+      entryLabelPlural: 'Spells',
+      addPlaceholder: 'Low Magic tradition…',
+      entryPlaceholder: 'Spell name…',
+      reference: 'Deluxe Edition'
+    }
+  ],
+
+  getArcanePracticeConfig(key) {
+    return this.ARCANE_PRACTICES.find(cfg => cfg.key === key) || null;
+  },
+
+  ARCANE_PRESETS: {
+    martialStrifes: [
+      {
+        name: 'Strife of the Bitter Rival',
+        entries: [
+          'Name Their Doom',
+          'Excel Their Strokes',
+          'While They Live',
+          'Shed Their Snares',
+          'When They Hide',
+          'Fill Their Grave'
+        ]
+      },
+      {
+        name: 'Strife of the Broken Earth',
+        entries: [
+          'Avalanche Stride',
+          'Load Bearing',
+          'Rocks Fall',
+          'No Walls Stand',
+          'Gray Jaws Champing',
+          'Under This Red Rock'
+        ]
+      },
+      {
+        name: 'Strife of the Consuming Flame',
+        entries: [
+          'Ignite the Pyre',
+          'Blaze of Conviction',
+          'A Hand of Ashes',
+          'Burn Clean',
+          'An Unfettered Flame',
+          'A Consuming Fury'
+        ]
+      },
+      {
+        name: 'Strife of the Drowning Tide',
+        entries: [
+          'Water Red and White',
+          'Undertow Hand',
+          'The Tide Comes In',
+          'Stone Cast on the Strand',
+          'The Tide Goes Out',
+          'The Mountains Wash Away'
+        ]
+      },
+      {
+        name: 'Strife of the Dying Hour',
+        entries: [
+          'Sand Falling Free',
+          'Thief of Hours',
+          'Day-Devouring Blow',
+          'Avalanche of Moments',
+          'Stand Outside the Hour',
+          'The Seconds Flee'
+        ]
+      },
+      {
+        name: 'Strife of the Falling Sky',
+        entries: [
+          'Javelin of God',
+          'The Rising of Rain',
+          'Cast Down the Proud',
+          'Thunderbolt Fist',
+          'Topple the Pillar',
+          'Tear Down the Sky'
+        ]
+      },
+      {
+        name: 'Strife of the Hunting Beast',
+        entries: [
+          'The God that Prowls',
+          'Mask of Grasses',
+          'Talons of the Stalking Beast',
+          'The Taste of Blood',
+          'Cull the Huntsman\'s Pack',
+          'Red Jaws of Frenzy'
+        ]
+      },
+      {
+        name: 'Strife of the Scorned Lover',
+        entries: [
+          'A Kiss Like Poison',
+          'A Clinging like Fragrance',
+          'A Confession like Sin',
+          'A Passion like Chains',
+          'A Name like Razors',
+          'A Love like Murder'
+        ]
+      }
+    ],
+    theurgy: [
+      {
+        name: 'Gate',
+        entries: [
+          'Barred Gates of Forbiddance',
+          'Beacon of Celestial Purity',
+          'The Bright God\'s Canticle',
+          'The Excision of Days',
+          'Kiss of the Crane',
+          'Open the Night Road',
+          'Pore of Hell',
+          'Ranks of Pale Bone',
+          'Seal of Regnal Dominion',
+          'Sunder the Lesser Spell',
+          'The Tireless Iron Cavalcade',
+          'The Trumpet of Far Utterance'
+        ]
+      },
+      {
+        name: 'Way',
+        entries: [
+          'Curse of the Blighted Strand',
+          'The Deafening Word of Truth',
+          'Delaying the Coming of Dawn',
+          'The Far-Distant Lance',
+          'Glyph of Crowned Impunity',
+          'Mirrored Wheel of the Seasons',
+          'Path to the Bright Sanctum',
+          'Shutting the Dark Way',
+          'Sign of Avulsive Banishment',
+          'Sunder the Greater Spell',
+          'Tumulus of Sanctified Night'
+        ]
+      },
+      {
+        name: 'Throne',
+        entries: [
+          'A Heart\'s Desire',
+          'Auspice of the Divine King',
+          'Directed Convulsion of Law',
+          'Gifts of Spring and Winter',
+          'The Grinding Teeth of God',
+          'Legion of Marching Clay',
+          'Palace of the Sorcerer-Prince',
+          'Pierce the Veil of Night',
+          'Summon the Black Iron Servitor',
+          'Sunder Every Sorcery'
+        ]
+      }
+    ],
+    lowMagic: [
+      { name: 'The Academy of Thought', entries: [] },
+      { name: 'The Cinnabar Order', entries: [] },
+      { name: 'Curse-Eaters', entries: [] },
+      { name: 'The Empty Way', entries: [] },
+      { name: 'Hedge Magic', entries: [] },
+      { name: 'The Merciful Hand', entries: [] },
+      { name: 'Seers of the Bright Eye', entries: [] },
+      { name: 'The Theotechnicians', entries: [] }
+    ]
+  },
+
   /** Escape a string for safe insertion into HTML attribute values or text. */
   escHtml(str) {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

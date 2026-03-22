@@ -725,6 +725,45 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 .gifts-list { padding: .4rem .6rem; display: flex; flex-direction: column; gap: .3rem; }
 
+.practice-category {
+  border-top: 1px solid var(--border);
+  padding-top: .75rem;
+  margin-top: .75rem;
+}
+
+.practice-category:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.practice-list {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+.practice-header {
+  gap: .5rem;
+}
+
+.practice-title-input {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.practice-notes-wrap {
+  padding: .55rem .65rem 0;
+}
+
+.practice-notes {
+  min-height: 4.5rem;
+}
+
+.practice-entries-list {
+  padding-top: .55rem;
+}
+
 .gifts-header {
   display: flex;
   align-items: center;
@@ -742,6 +781,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .gift-col-act    { min-width: 5rem; flex-shrink: 0; }
 .gift-col-smite  { min-width: 3.5rem; flex-shrink: 0; }
 .gift-col-effort { min-width: 4rem; flex-shrink: 0; }
+.gift-col-attr   { min-width: 7.25rem; flex-shrink: 0; }
 
 .gift-row {
   display: flex;
@@ -755,6 +795,10 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .gift-row:last-child { border-bottom: none; }
 
 .gift-row.gift-active { background: rgba(201,168,76,.05); }
+
+.practice-entry-toggle-btn {
+  min-width: 1.5rem;
+}
 
 .gift-description {
   flex: 1 0 100%;
@@ -798,6 +842,47 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   font-size: .75rem;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.gift-modify-label {
+  font-size: .75rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.gift-modifier-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  flex-wrap: wrap;
+}
+
+.gift-modifier-summary {
+  display: inline-flex;
+  align-items: center;
+  padding: .14rem .4rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: .68rem;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+.gift-modifier-summary.is-active {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 55%, var(--border));
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.gift-modifier-summary.is-inactive {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.gift-modifier-summary.is-template {
+  color: var(--gold-light);
+  border-color: color-mix(in srgb, var(--gold-light) 40%, var(--border));
+  background: color-mix(in srgb, var(--gold-light) 10%, transparent);
 }
 
 /* ─── Overview layout ───────────────────────────────────── */
@@ -1166,6 +1251,10 @@ tr.apo-gained td { background: rgba(201,168,76,.08); }
 
 /* ─── Data Editor ───────────────────────────────────────── */
 .de-word-block .word-header { flex-wrap: wrap; }
+
+.de-practice-card .card-header {
+  align-items: flex-start;
+}
 
 /* Action cell – holds apply + remove buttons side-by-side */
 .de-action-cell {
