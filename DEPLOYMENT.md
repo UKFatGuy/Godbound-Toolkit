@@ -140,7 +140,7 @@ The repository includes a workflow at `.github/workflows/deploy.yml` that automa
 
 ### How it works
 
-1. **Build** – GitHub Actions builds the Docker image using Docker Buildx with layer caching.
+1. **Build** – GitHub Actions builds a multi-arch Docker image using Docker Buildx (with QEMU for cross-compilation) targeting `linux/amd64`, `linux/arm64`, `linux/arm/v7`, and `linux/arm/v6`.
 2. **Push** – The image is published to **GitHub Container Registry (GHCR)**:
    - `ghcr.io/ukfatguy/godbound-toolkit:latest` – updated on every `main` push
    - `ghcr.io/ukfatguy/godbound-toolkit:sha-<full-sha>` – every build, for traceability
