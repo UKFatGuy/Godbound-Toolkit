@@ -37,33 +37,93 @@ A full-function, no-build, browser-based companion app for the **Godbound** TTRP
 ## Requirements
 
 - A modern browser (Chrome, Edge, Firefox, Safari).
-- No server, build step, or dependencies required.
+- **Node.js 18+** for server-backed persistence (recommended) or Docker.
 
 ## Running locally
 
-1. Clone or download this repository.
-2. Open `index.html` in your browser.
+### Option A – Node server (recommended)
 
-If your browser blocks local file access for any feature (rare), run a tiny local web server instead, for example:
+The Node/Express server enables server-side persistence so data survives clearing browser storage, and works across multiple browser profiles.
 
-- Python: `python -m http.server 8000`
+```bash
+git clone https://github.com/UKFatGuy/Godbound-Toolkit.git
+cd Godbound-Toolkit
+npm ci
+npm start
+```
 
-Then open `http://localhost:8000`.
+Then open `http://localhost:3000`.
 
-## Data storage (localStorage)
+> **Note:** Opening `index.html` directly (via `file://`) still works and falls back to `localStorage`-only storage, but server-backed persistence requires running via `npm start` (or Docker).
+
+### Option B – Docker
+
+See the [Docker instructions](#docker) section below.
+
+## Docker
+
+### Quick start
+
+```bash
+# Build the image
+docker build -t godbound-toolkit .
+
+# Run with a named volume so data persists across container restarts
+docker run --rm -p 3000:3000 -v godbound_data:/app/data godbound-toolkit
+```
+
+Open `http://localhost:3000`.
+
+### Using docker compose
+
+```bash
+docker compose up --build
+```
+
+To stop and remove containers (data is kept in the `godbound_data` volume):
+
+```bash
+docker compose down
+```
+
+### Changing the port
+
+Pass the `PORT` environment variable at runtime:
+
+```bash
+# docker run
+docker run --rm -p 8080:8080 -e PORT=8080 -v godbound_data:/app/data godbound-toolkit
+
+# docker compose (set in a .env file or inline)
+PORT=8080 docker compose up --build
+```
+
+### Persisting data
+
+The container writes all saved data to `/app/data/appdata.json`. Mount a volume or bind mount to that path:
+
+| Method | Command fragment |
+|---|---|
+| Named volume (recommended) | `-v godbound_data:/app/data` |
+| Bind mount | `-v /your/host/path:/app/data` |
+
+Data is preserved across `docker run`/`docker compose up` restarts as long as the volume or bind mount is reused.
+
+## Data storage
 
 This app saves:
 - Dice roll history
 - Combat tracker state
 - Character sheets
 
-…to your browser’s **localStorage** for this site/origin.
+When running via the Node server or Docker, data is written server-side to `data/appdata.json` **and** kept in `localStorage`. On page load the app re-hydrates from the server, so data is shared across browser profiles on the same server.
+
+When opened as a plain file (`file://`), the app falls back to `localStorage` only.
 
 ### Resetting data
 
-If you need to clear everything:
-- Open your browser devtools and clear site data for the page, **or**
-- Clear localStorage for this site via your browser settings.
+- **Server/Docker**: delete `data/appdata.json` (or the Docker volume) and restart.
+- **Browser only**: open devtools and clear site data / localStorage for the page.
 
 ## Project Structure
 

@@ -1,0 +1,12 @@
+services:
+  godbound:
+    build: .
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    volumes:
+      - godbound_data:/app/data
+    environment:
+      - PORT=${PORT:-3000}
+
+volumes:
+  godbound_data:
