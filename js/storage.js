@@ -1,9 +1,12 @@
 'use strict';
 
 /**
- * Thin localStorage wrapper.
- * All persistence in the app goes through this object so that
- * the storage back-end can be swapped out later with minimal changes.
+ * Storage wrapper.
+ * localStorage is used as the synchronous read/write layer so that
+ * all existing callers continue to work unchanged.  On startup the
+ * data is hydrated from the server, and every write schedules a
+ * debounced background sync back to the server so that data persists
+ * across browsers and devices.
  */
 const GoStorage = {
 
@@ -15,9 +18,64 @@ const GoStorage = {
     DATA_TEMPLATES:   'godbound_data_templates'
   },
 
+  /* ─── Server sync ───────────────────────────────────────────────── */
+
+  _syncTimer: null,
+
+  /**
+   * Called once at startup.  Fetches all data from the server and
+   * writes it into localStorage so the synchronous module inits see
+   * up-to-date values.  Silently falls back to existing localStorage
+   * contents when the server is unavailable.
+   */
+  async init() {
+    try {
+      const res = await fetch('/api/data');
+      if (!res.ok) return;
+      const serverData = await res.json();
+      for (const [key, value] of Object.entries(serverData)) {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    } catch (e) {
+      console.warn('[GoStorage] Server unavailable – using localStorage only', e);
+    }
+  },
+
+  /** Schedule a debounced flush of all keys to the server (1 s delay). */
+  _scheduleServerSync() {
+    clearTimeout(this._syncTimer);
+    this._syncTimer = setTimeout(() => this._syncToServer(), 1000);
+  },
+
+  /** POST all tracked keys to the server. */
+  async _syncToServer() {
+    const payload = {};
+    for (const key of Object.values(this.KEYS)) {
+      const raw = localStorage.getItem(key);
+      if (raw !== null) {
+        try { payload[key] = JSON.parse(raw); } catch (e) {
+          console.warn('[GoStorage] Could not parse stored value for key', key, e);
+          payload[key] = raw;
+        }
+      }
+    }
+    try {
+      await fetch('/api/data', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.warn('[GoStorage] Server sync failed', e);
+    }
+  },
+
+  /* ─── Core read / write ─────────────────────────────────────────── */
+
   save(key, data) {
     try {
       localStorage.setItem(key, JSON.stringify(data));
+      this._scheduleServerSync();
       return true;
     } catch (e) {
       console.error('[GoStorage] save failed', e);

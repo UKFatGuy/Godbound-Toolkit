@@ -8,7 +8,8 @@ const GoApp = {
 
   /* ─── Init ──────────────────────────────────────────────────────── */
 
-  init() {
+  async init() {
+    await GoStorage.init();
     this._setupTabs();
     GoDice.init();
     GoCombat.init();
