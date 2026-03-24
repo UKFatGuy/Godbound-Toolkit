@@ -134,6 +134,69 @@ Alias /app /path/to/Godbound-Toolkit
 
 ---
 
+## CI/CD (GitHub Actions)
+
+The repository includes a workflow at `.github/workflows/deploy.yml` that automatically builds and deploys the app on every push to `main` and on version tags (`v*.*.*`).
+
+### How it works
+
+1. **Build** – GitHub Actions builds the Docker image using Docker Buildx with layer caching.
+2. **Push** – The image is published to **GitHub Container Registry (GHCR)**:
+   - `ghcr.io/ukfatguy/godbound-toolkit:latest` – updated on every `main` push
+   - `ghcr.io/ukfatguy/godbound-toolkit:sha-<full-sha>` – every build, for traceability
+   - `ghcr.io/ukfatguy/godbound-toolkit:<tag>` – e.g. `v1.2.3`, on git tag pushes
+3. **Deploy** – After the image is pushed, Actions SSHes into the target server and runs:
+   ```bash
+   docker compose pull
+   docker compose up -d
+   docker image prune -f   # remove unused images to free disk space
+   ```
+
+### Required repository secrets
+
+Configure these in **Repo Settings → Secrets and variables → Actions**:
+
+| Secret | Description |
+|---|---|
+| `DEPLOY_HOST` | Hostname or IP address of the target server |
+| `DEPLOY_USER` | SSH username on the target server |
+| `DEPLOY_SSH_KEY` | Private SSH key (ed25519 recommended) authorised on the server |
+| `DEPLOY_PATH` | Absolute path on the server containing `docker-compose.yml` (e.g. `/opt/godbound-toolkit`) |
+| `DEPLOY_PORT` | *(optional)* SSH port – defaults to `22` when omitted |
+
+### Server-side `docker-compose.yml`
+
+The server only needs a `docker-compose.yml` that references the GHCR image. It does **not** need a copy of the repository source code.
+
+```yaml
+services:
+  godbound:
+    image: ghcr.io/ukfatguy/godbound-toolkit:latest
+    container_name: godbound-toolkit
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    environment:
+      - PORT=${PORT:-3000}
+    volumes:
+      - godbound_data:/app/data
+
+volumes:
+  godbound_data:
+```
+
+> **Note:** If the GHCR package is private, log in to GHCR on the server once before the first deployment:
+> ```bash
+> docker login ghcr.io -u <github-username>
+> # enter a GitHub PAT with `read:packages` scope when prompted
+> ```
+
+### Persistent data volume
+
+All application data lives in `/app/data/appdata.json` inside the container. The `godbound_data` named volume is mounted at `/app/data`, so data is preserved across every `docker compose pull` + `docker compose up -d` update cycle. **Never use `docker compose down -v`** on the server unless you intentionally want to wipe the data.
+
+---
+
 ## Browser localStorage notes
 
 - **Chrome / Edge**: full `localStorage` support.
