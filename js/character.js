@@ -11,6 +11,8 @@ const GoCharacter = {
   characters: [],
   activeIdx: 0,
 
+  DEFAULT_UNARMED_DAMAGE: '1d2 + STR mod',
+
   /* ─── Default character template ───────────────────────────────── */
 
   _newCharacter(name = 'New Character') {
@@ -37,6 +39,7 @@ const GoCharacter = {
       ac:            9,
       attackBonus: 2,
       frayBonusDice: '',   /* extra dice added to fray roll, e.g. '1d6'; empty = none */
+      unarmedDamage: this.DEFAULT_UNARMED_DAMAGE,  /* editable unarmed damage string */
 
       saves: { hardiness: 15, evasion: 15, spirit: 15 },
 
@@ -581,15 +584,16 @@ const GoCharacter = {
             Bonus Fray Dice
             <select class="input-sm" data-field="fray-bonus-dice">
               <option value="" ${!c.frayBonusDice ? 'selected' : ''}>None</option>
-              ${['1d4','1d6','1d8','1d10','1d12'].map(d =>
+              ${[4,6,8,10,12].flatMap(s => Array.from({length:10},(_,i)=>`${i+1}d${s}`)).map(d =>
                 `<option value="${d}" ${c.frayBonusDice === d ? 'selected' : ''}>${d}</option>`
               ).join('')}
             </select>
           </label>
-          <div class="form-label">
+          <label class="form-label">
             Unarmed
-            <span class="combat-info-static">1d2 + STR mod</span>
-          </div>
+            <input type="text" class="input-sm" data-field="unarmed-damage"
+              value="${c.unarmedDamage ?? GoCharacter.DEFAULT_UNARMED_DAMAGE}">
+          </label>
         </div>
         <p class="formula-note mt-sm">Attack = Level + STR mod (melee) &nbsp;|&nbsp; Level + DEX mod (ranged)</p>
         <div class="damage-chart mt-sm">
@@ -1683,6 +1687,7 @@ const GoCharacter = {
       'defense-attr':     v => c.defenseAttr       = v,
       'attack-bonus':     v => c.attackBonus       = parseInt(v,10)||0,
       'fray-bonus-dice':  v => c.frayBonusDice      = v,
+      'unarmed-damage':   v => c.unarmedDamage       = v,
       'save-hardiness':   v => c.saves.hardiness   = parseInt(v,10)||15,
       'save-evasion':     v => c.saves.evasion     = parseInt(v,10)||15,
       'save-spirit':      v => c.saves.spirit      = parseInt(v,10)||15,
