@@ -1146,6 +1146,38 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   flex-wrap: wrap;
   align-items: flex-end;
 }
+.attack-bonus-grid {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.attack-bonus-grid .form-label {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+.formula-hint {
+  font-size: .72rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: .2rem;
+  flex-wrap: wrap;
+}
+.input-inline-select {
+  font-size: .72rem;
+  padding: .1rem .2rem;
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.input-unarmed {
+  padding: .35rem .5rem;
+  width: 12rem;
+}
 .combat-info-static {
   font-size: .88rem;
   color: var(--text-primary);

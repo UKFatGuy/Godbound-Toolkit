@@ -12,6 +12,7 @@ const GoCharacter = {
   activeIdx: 0,
 
   DEFAULT_UNARMED_DAMAGE: '1d2 + STR mod',
+  DEFAULT_CUSTOM_ATTACK_ATTR: 'str',
 
   /* ─── Default character template ───────────────────────────────── */
 
@@ -38,6 +39,7 @@ const GoCharacter = {
       defenseAttr:  'dex',
       ac:            9,
       attackBonus: 2,
+      customAttackAttr: GoCharacter.DEFAULT_CUSTOM_ATTACK_ATTR,  /* attribute used for the custom attack bonus box */
       frayBonusDice: '',   /* extra dice added to fray roll, e.g. '1d6'; empty = none */
       unarmedDamage: this.DEFAULT_UNARMED_DAMAGE,  /* editable unarmed damage string */
 
@@ -110,6 +112,7 @@ const GoCharacter = {
     if (!Array.isArray(char.equipment)) char.equipment = [];
     if (!Array.isArray(char.artifacts)) char.artifacts = [];
     if (!Array.isArray(char.shrines)) char.shrines = [];
+    if (!char.customAttackAttr) char.customAttackAttr = GoCharacter.DEFAULT_CUSTOM_ATTACK_ATTR;
 
     GoUtils.ARCANE_PRACTICES.forEach(cfg => {
       char[cfg.key] = this._normalizePracticeList(char[cfg.key]);
@@ -626,12 +629,36 @@ const GoCharacter = {
       <!-- ══ PAGE 2 LOWER: Combat ═══════════════════════════════════ -->
       <div class="card">
         <h2 class="card-title">Combat</h2>
-        <div class="combat-header-row">
+
+        <!-- Attack Bonuses -->
+        <div class="attack-bonus-grid mt-sm">
           <label class="form-label">
-            Base Attack Bonus
-            <input type="number" class="input-sm" data-field="attack-bonus"
-              value="${c.attackBonus}">
+            Melee Attack
+            <span class="formula-hint">(Lvl + STR)</span>
+            <input type="number" class="input-sm" id="attack-melee" readonly
+              value="${c.level + this._computeFinalMod('str')}">
           </label>
+          <label class="form-label">
+            Ranged Attack
+            <span class="formula-hint">(Lvl + DEX)</span>
+            <input type="number" class="input-sm" id="attack-ranged" readonly
+              value="${c.level + this._computeFinalMod('dex')}">
+          </label>
+          <label class="form-label">
+            Custom Attack
+            <span class="formula-hint">(Lvl +
+              <select class="input-inline-select" data-field="custom-attack-attr">
+                ${['str','dex','con','int','wis','cha'].map(a =>
+                  `<option value="${a}" ${(c.customAttackAttr||GoCharacter.DEFAULT_CUSTOM_ATTACK_ATTR)===a ? 'selected' : ''}>${a.toUpperCase()}</option>`
+                ).join('')}
+              </select>)
+            </span>
+            <input type="number" class="input-sm" id="attack-custom" readonly
+              value="${c.level + this._computeFinalMod(c.customAttackAttr||GoCharacter.DEFAULT_CUSTOM_ATTACK_ATTR)}">
+          </label>
+        </div>
+
+        <div class="combat-header-row mt-sm">
           <div class="form-label">
             Fray Die
             <span class="fray-badge">${GoUtils.getFrayDiceDisplay(c.level, c.frayBonusDice)}</span>
@@ -646,12 +673,11 @@ const GoCharacter = {
             </select>
           </label>
           <label class="form-label">
-            Unarmed
-            <input type="text" class="input-sm" data-field="unarmed-damage"
+            Unarmed Damage
+            <input type="text" class="input-unarmed" data-field="unarmed-damage"
               value="${c.unarmedDamage ?? GoCharacter.DEFAULT_UNARMED_DAMAGE}">
           </label>
         </div>
-        <p class="formula-note mt-sm">Attack = Level + STR mod (melee) &nbsp;|&nbsp; Level + DEX mod (ranged)</p>
         <div class="damage-chart mt-sm">
           <span class="damage-chart-title">Damage Chart (RpD : Dmg)</span>
           <span class="damage-chart-val">2–5 : 1</span>
@@ -936,6 +962,7 @@ const GoCharacter = {
     this._renderShrines();
     this._attachCharEvents();
     this._refreshDerivedFromGiftModifiers();
+    this._updateAttackBonuses();
   },
 
   /* ─── Words render ──────────────────────────────────────────────── */
@@ -1298,6 +1325,7 @@ const GoCharacter = {
     if (checkEl) checkEl.textContent = 21 - score;
     this._updateSaves();
     if (attr === 'con') this._updateHPMax();
+    this._updateAttackBonuses();
   },
 
   _computeHPMax() {
@@ -1455,6 +1483,7 @@ const GoCharacter = {
     this._updateAC();
     this._updateInfluence();
     this._updateEffort();
+    this._updateAttackBonuses();
 
     const c = this.char;
     const avail = document.querySelector('.effort-avail');
@@ -1462,6 +1491,25 @@ const GoCharacter = {
       avail.textContent = c.effort.total - c.effort.committedDay - c.effort.committedScene;
     }
     this._updateStatBanner();
+  },
+
+  _updateAttackBonuses() {
+    const levelEl = document.querySelector('[data-field="level"]');
+    const fallback = this.char?.level || 1;
+    const level = levelEl ? (parseInt(levelEl.value, 10) || fallback) : fallback;
+
+    const meleeEl  = document.getElementById('attack-melee');
+    const rangedEl = document.getElementById('attack-ranged');
+    const customEl = document.getElementById('attack-custom');
+    const attrSel  = document.querySelector('[data-field="custom-attack-attr"]');
+
+    if (meleeEl)  meleeEl.value  = level + this._computeFinalMod('str');
+    if (rangedEl) rangedEl.value = level + this._computeFinalMod('dex');
+
+    if (attrSel && customEl) {
+      const attr = attrSel.value || (this.char?.customAttackAttr || GoCharacter.DEFAULT_CUSTOM_ATTACK_ATTR);
+      customEl.value = level + this._computeFinalMod(attr);
+    }
   },
 
   /* ─── Stat banner live update ───────────────────────────────────── */
@@ -1804,6 +1852,7 @@ const GoCharacter = {
       'shield-or-cloak':  v => c.shieldOrCloak     = (v === 'yes'),
       'defense-attr':     v => c.defenseAttr       = v,
       'attack-bonus':     v => c.attackBonus       = parseInt(v,10)||0,
+      'custom-attack-attr': v => { c.customAttackAttr = v; this._updateAttackBonuses(); },
       'fray-bonus-dice':  v => c.frayBonusDice      = v,
       'unarmed-damage':   v => c.unarmedDamage       = v,
       'save-hardiness':   v => c.saves.hardiness   = parseInt(v,10)||15,
