@@ -6,6 +6,8 @@
   <meta name="description" content="Godbound TTRPG Toolkit – Dice roller, combat tracker and character sheet for the Godbound tabletop RPG.">
   <title>Godbound Toolkit</title>
   <link rel="stylesheet" href="css/styles.css">
+  <script>/* Apply saved theme immediately to prevent flash-of-wrong-theme */
+  (function(){var v=['dark-fantasy','high-fantasy','retro-terminal','sci-fi'];var t=localStorage.getItem('godbound_theme');document.documentElement.setAttribute('data-theme',v.indexOf(t)!==-1?t:'dark-fantasy');}());</script>
 </head>
 <body>
 
@@ -25,6 +27,12 @@
     </nav>
 
     <div class="header-actions" role="group" aria-label="Data management">
+      <select id="theme-select" class="theme-select" aria-label="Select visual theme" title="Switch visual theme">
+        <option value="dark-fantasy">⚔️ Dark Fantasy</option>
+        <option value="high-fantasy">🌿 High Fantasy</option>
+        <option value="retro-terminal">💻 Retro Terminal</option>
+        <option value="sci-fi">🚀 Sci-Fi</option>
+      </select>
       <button id="export-btn" class="btn-header-action" title="Export all data to a JSON file">
         📤 Export
       </button>
@@ -69,6 +77,7 @@
   ════════════════════════════════════════════════════════════ -->
   <script src="js/utils.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/theme.js"></script>
   <script src="js/importexport.js"></script>
   <script src="js/dice.js"></script>
   <script src="js/combat.js"></script>
