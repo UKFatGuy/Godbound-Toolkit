@@ -81,6 +81,14 @@ const GoCharacter = {
     this.activeIdx = GoUtils.clamp(this.activeIdx, 0, this.characters.length - 1);
     GoStorage.saveCharacters(this.characters);
     this.render();
+
+    /* One-time delegated listener: keep the stat banner live whenever
+       any field inside the character tab changes. */
+    const tabEl = document.getElementById('character-tab');
+    if (tabEl) {
+      tabEl.addEventListener('input',  () => this._updateStatBanner());
+      tabEl.addEventListener('change', () => this._updateStatBanner());
+    }
   },
 
   _save() {
@@ -353,6 +361,12 @@ const GoCharacter = {
     const apo       = c.apotheosis || {};
     const giftPts   = 4 + 2 * (c.level || 1);
 
+    /* Compute HP colour class for stat banner */
+    const hpCur   = c.hp.current ?? c.hp.max;
+    const hpMax   = c.hp.max ?? 1;
+    const hpRatio = hpMax > 0 ? hpCur / hpMax : 1;
+    const hpPipCls = hpRatio > 0.6 ? 'stat-hp-ok' : hpRatio > 0.25 ? 'stat-hp-warn' : 'stat-hp-low';
+
     el.innerHTML = `
       <!-- Character selector bar -->
       <div class="card char-selector-bar">
@@ -363,6 +377,48 @@ const GoCharacter = {
         </select>
         <button id="char-new-btn"    class="btn-primary">+ New</button>
         <button id="char-delete-btn" class="btn-danger">Delete</button>
+      </div>
+
+      <!-- ══ Character stat banner ══════════════════════════════════ -->
+      <div class="char-stat-banner" id="char-stat-banner">
+        <div class="stat-pip ${hpPipCls}" id="banner-pip-hp">
+          <span class="stat-pip-label">Hit Points</span>
+          <span class="stat-pip-value">
+            <span id="banner-hp-cur">${hpCur}</span><span class="stat-pip-sub"> / <span id="banner-hp-max">${hpMax}</span></span>
+          </span>
+        </div>
+        <div class="stat-pip">
+          <span class="stat-pip-label">Armour Class</span>
+          <span class="stat-pip-value" id="banner-ac">${c.ac ?? this._armorTypeToBaseAC(c.armorType||'none')}</span>
+        </div>
+        <div class="stat-pip">
+          <span class="stat-pip-label">Hardiness</span>
+          <span class="stat-pip-value" id="banner-hardiness">${c.saves.hardiness}</span>
+        </div>
+        <div class="stat-pip">
+          <span class="stat-pip-label">Evasion</span>
+          <span class="stat-pip-value" id="banner-evasion">${c.saves.evasion}</span>
+        </div>
+        <div class="stat-pip">
+          <span class="stat-pip-label">Spirit</span>
+          <span class="stat-pip-value" id="banner-spirit">${c.saves.spirit}</span>
+        </div>
+        <div class="stat-pip">
+          <span class="stat-pip-label">Effort</span>
+          <span class="stat-pip-value">
+            <span id="banner-effort-avail">${c.effort.total - c.effort.committedDay - c.effort.committedScene}</span><span class="stat-pip-sub"> / <span id="banner-effort-max">${c.effort.total}</span></span>
+          </span>
+        </div>
+        <div class="stat-pip">
+          <span class="stat-pip-label">Influence</span>
+          <span class="stat-pip-value">
+            <span id="banner-influence-cur">${c.influence.current}</span><span class="stat-pip-sub"> / <span id="banner-influence-max">${c.influence.max}</span></span>
+          </span>
+        </div>
+        <div class="stat-pip">
+          <span class="stat-pip-label">Fray Die</span>
+          <span class="stat-pip-value">${GoUtils.getFrayDiceDisplay(c.level, c.frayBonusDice)}</span>
+        </div>
       </div>
 
       <!-- ══ PAGE 1: Overview ══════════════════════════════════════ -->
@@ -610,78 +666,80 @@ const GoCharacter = {
       <div class="card">
         <h2 class="card-title">Divine Resources</h2>
 
-        <!-- Dominion -->
-        <div class="resource-group">
-          <h3 class="section-subtitle">Dominion</h3>
-          <p class="formula-note">DOMINION = Base (1 + Level) + from Cult + from Effort spending</p>
-          <div class="form-grid mt-sm">
-            <label class="form-label">Total Dominion
-              <input type="number" class="input-sm" data-field="dominion"
-                value="${c.dominion.total}" min="0">
-            </label>
-          </div>
-        </div>
-
-        <!-- Effort -->
-        <div class="resource-group mt-sm">
-          <h3 class="section-subtitle">Effort</h3>
-          <p class="formula-note">2 at Level 1, +1 per Level, + Bonuses (auto-calculated)</p>
-          <div class="form-grid">
-            <label class="form-label">Total Effort
-              <input type="number" class="input-sm" data-field="effort-total"
-                value="${c.effort.total}" min="0" max="10" readonly>
-            </label>
-            <label class="form-label">Effort Bonus
-              <input type="number" class="input-sm" data-field="effort-bonus"
-                value="${c.effort.bonus || 0}" min="0">
-            </label>
-            <label class="form-label">Committed (Day)
-              <input type="number" class="input-sm" data-field="effort-day"
-                value="${c.effort.committedDay}" min="0">
-            </label>
-            <label class="form-label">Committed (Scene)
-              <input type="number" class="input-sm" data-field="effort-scene"
-                value="${c.effort.committedScene}" min="0">
-            </label>
-            <div class="form-label">
-              <span class="sub-label">Available</span>
-              <span class="effort-avail">${c.effort.total - c.effort.committedDay - c.effort.committedScene}</span>
+        <div class="resources-grid">
+          <!-- Dominion -->
+          <div class="resource-group">
+            <h3 class="section-subtitle">Dominion</h3>
+            <p class="formula-note">Base (1 + Level) + from Cult + from Effort spending</p>
+            <div class="form-grid mt-sm">
+              <label class="form-label">Total Dominion
+                <input type="number" class="input-sm" data-field="dominion"
+                  value="${c.dominion.total}" min="0">
+              </label>
             </div>
           </div>
-        </div>
 
-        <!-- Influence -->
-        <div class="resource-group mt-sm">
-          <h3 class="section-subtitle">Influence</h3>
-          <p class="formula-note">2 at Level 1, +1 per additional level, + Bonuses (auto-calculated)</p>
-          <div class="form-grid mt-sm">
-            <label class="form-label">Influence (Max)
-              <input type="number" class="input-sm" data-field="influence-max"
-                value="${c.influence.max}" min="0" readonly>
-            </label>
-            <label class="form-label">Influence Bonus
-              <input type="number" class="input-sm" data-field="influence-bonus"
-                value="${c.influence.bonus || 0}" min="0">
-            </label>
-            <label class="form-label">Influence (Used)
-              <input type="number" class="input-sm" data-field="influence-current"
-                value="${c.influence.current}" min="0">
-            </label>
+          <!-- Effort -->
+          <div class="resource-group">
+            <h3 class="section-subtitle">Effort</h3>
+            <p class="formula-note">2 at Level 1, +1 per Level, + Bonuses (auto-calculated)</p>
+            <div class="form-grid mt-sm">
+              <label class="form-label">Total Effort
+                <input type="number" class="input-sm" data-field="effort-total"
+                  value="${c.effort.total}" min="0" max="10" readonly>
+              </label>
+              <label class="form-label">Effort Bonus
+                <input type="number" class="input-sm" data-field="effort-bonus"
+                  value="${c.effort.bonus || 0}" min="0">
+              </label>
+              <label class="form-label">Committed (Day)
+                <input type="number" class="input-sm" data-field="effort-day"
+                  value="${c.effort.committedDay}" min="0">
+              </label>
+              <label class="form-label">Committed (Scene)
+                <input type="number" class="input-sm" data-field="effort-scene"
+                  value="${c.effort.committedScene}" min="0">
+              </label>
+              <div class="form-label">
+                <span class="sub-label">Available</span>
+                <span class="effort-avail">${c.effort.total - c.effort.committedDay - c.effort.committedScene}</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <!-- Wealth -->
-        <div class="resource-group mt-sm">
-          <h3 class="section-subtitle">Wealth</h3>
-          <div class="form-grid mt-sm">
-            <label class="form-label">Total Wealth
-              <input type="number" class="input-sm" data-field="wealth-total"
-                value="${wealth.total || 0}" min="0">
-            </label>
-            <label class="form-label">Free Wealth
-              <input type="number" class="input-sm" data-field="wealth-free"
-                value="${wealth.free || 0}" min="0">
-            </label>
+          <!-- Influence -->
+          <div class="resource-group">
+            <h3 class="section-subtitle">Influence</h3>
+            <p class="formula-note">2 at Level 1, +1 per additional level, + Bonuses (auto-calculated)</p>
+            <div class="form-grid mt-sm">
+              <label class="form-label">Influence (Max)
+                <input type="number" class="input-sm" data-field="influence-max"
+                  value="${c.influence.max}" min="0" readonly>
+              </label>
+              <label class="form-label">Influence Bonus
+                <input type="number" class="input-sm" data-field="influence-bonus"
+                  value="${c.influence.bonus || 0}" min="0">
+              </label>
+              <label class="form-label">Influence (Used)
+                <input type="number" class="input-sm" data-field="influence-current"
+                  value="${c.influence.current}" min="0">
+              </label>
+            </div>
+          </div>
+
+          <!-- Wealth -->
+          <div class="resource-group">
+            <h3 class="section-subtitle">Wealth</h3>
+            <div class="form-grid mt-sm">
+              <label class="form-label">Total Wealth
+                <input type="number" class="input-sm" data-field="wealth-total"
+                  value="${wealth.total || 0}" min="0">
+              </label>
+              <label class="form-label">Free Wealth
+                <input type="number" class="input-sm" data-field="wealth-free"
+                  value="${wealth.free || 0}" min="0">
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -1403,9 +1461,69 @@ const GoCharacter = {
     if (avail && c && c.effort) {
       avail.textContent = c.effort.total - c.effort.committedDay - c.effort.committedScene;
     }
+    this._updateStatBanner();
   },
 
-  /* ─── Event binding ─────────────────────────────────────────────── */
+  /* ─── Stat banner live update ───────────────────────────────────── */
+
+  _updateStatBanner() {
+    const c = this.char;
+    if (!c) return;
+
+    /* HP */
+    const hpCurEl = document.querySelector('[data-field="hp-current"]');
+    const hpMaxEl = document.querySelector('[data-field="hp-max"]');
+    const hpCur   = hpCurEl ? (parseInt(hpCurEl.value, 10) || 0) : (c.hp?.current ?? 0);
+    const hpMax   = hpMaxEl ? (parseInt(hpMaxEl.value, 10) || 1) : (c.hp?.max ?? 1);
+    const hpRatio = hpMax > 0 ? hpCur / hpMax : 1;
+    const hpCls   = hpRatio > 0.6 ? 'stat-hp-ok' : hpRatio > 0.25 ? 'stat-hp-warn' : 'stat-hp-low';
+
+    const hpPip = document.getElementById('banner-pip-hp');
+    if (hpPip) {
+      hpPip.classList.remove('stat-hp-ok', 'stat-hp-warn', 'stat-hp-low');
+      hpPip.classList.add(hpCls);
+    }
+    const bHpCur = document.getElementById('banner-hp-cur');
+    const bHpMax = document.getElementById('banner-hp-max');
+    if (bHpCur) bHpCur.textContent = hpCur;
+    if (bHpMax) bHpMax.textContent = hpMax;
+
+    /* AC */
+    const acFormEl = document.querySelector('[data-field="ac"]');
+    const bAC = document.getElementById('banner-ac');
+    if (bAC) bAC.textContent = acFormEl ? acFormEl.value : (c.ac ?? '—');
+
+    /* Saves */
+    const hardFormEl = document.querySelector('[data-field="save-hardiness"]');
+    const evaFormEl  = document.querySelector('[data-field="save-evasion"]');
+    const spiFormEl  = document.querySelector('[data-field="save-spirit"]');
+    const bHard = document.getElementById('banner-hardiness');
+    const bEva  = document.getElementById('banner-evasion');
+    const bSpi  = document.getElementById('banner-spirit');
+    if (bHard && hardFormEl) bHard.textContent = hardFormEl.value;
+    if (bEva  && evaFormEl)  bEva.textContent  = evaFormEl.value;
+    if (bSpi  && spiFormEl)  bSpi.textContent  = spiFormEl.value;
+
+    /* Effort */
+    const effortTotalEl = document.querySelector('[data-field="effort-total"]');
+    const effortDayEl   = document.querySelector('[data-field="effort-day"]');
+    const effortSceneEl = document.querySelector('[data-field="effort-scene"]');
+    const eTotal = effortTotalEl ? (parseInt(effortTotalEl.value, 10) || 0) : (c.effort?.total ?? 0);
+    const eDay   = effortDayEl   ? (parseInt(effortDayEl.value,   10) || 0) : (c.effort?.committedDay ?? 0);
+    const eScene = effortSceneEl ? (parseInt(effortSceneEl.value, 10) || 0) : (c.effort?.committedScene ?? 0);
+    const bEffortAvail = document.getElementById('banner-effort-avail');
+    const bEffortMax   = document.getElementById('banner-effort-max');
+    if (bEffortAvail) bEffortAvail.textContent = eTotal - eDay - eScene;
+    if (bEffortMax)   bEffortMax.textContent   = eTotal;
+
+    /* Influence */
+    const infCurFormEl = document.querySelector('[data-field="influence-current"]');
+    const infMaxFormEl = document.querySelector('[data-field="influence-max"]');
+    const bInfCur = document.getElementById('banner-influence-cur');
+    const bInfMax = document.getElementById('banner-influence-max');
+    if (bInfCur && infCurFormEl) bInfCur.textContent = infCurFormEl.value;
+    if (bInfMax && infMaxFormEl) bInfMax.textContent = infMaxFormEl.value;
+  },
 
   _attachCharEvents() {
     /* Character selector */
