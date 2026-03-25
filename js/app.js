@@ -10,6 +10,7 @@ const GoApp = {
 
   async init() {
     await GoStorage.init();
+    GoTheme.init();
     this._setupTabs();
     GoDice.init();
     GoCombat.init();
