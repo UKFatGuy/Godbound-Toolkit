@@ -249,7 +249,6 @@ textarea:focus { border-color: var(--border-focus); }
 @media (max-width: 768px) {
   .fact-row { grid-template-columns: 1fr; }
 }
-.fact-field { }
 .fact-field .notes-area { width: 100%; }
 
 .form-label {
@@ -731,11 +730,16 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .stat-pip.stat-hp-low  { background: color-mix(in srgb, var(--red)    11%, transparent); }
 
 @media (max-width: 600px) {
+  /* On small screens wrap pips into a 4-column grid */
   .char-stat-banner { grid-template-columns: repeat(4, 1fr); }
+  /* Add bottom separators between rows; remove right border at the end of each row */
   .stat-pip { border-bottom: 1px solid var(--border); }
   .stat-pip:nth-child(4n) { border-right: none; }
-  .stat-pip:last-child { border-right: none; }
-  .stat-pip:nth-last-child(-n+4):not(:nth-child(4n+1)):not(:nth-child(4n+2)):not(:nth-child(4n+3)) { border-bottom: none; }
+  /* Remove bottom border from the last row of pips so the banner keeps a clean base edge */
+  .stat-pip:last-child,
+  .stat-pip:nth-last-child(2),
+  .stat-pip:nth-last-child(3),
+  .stat-pip:nth-last-child(4) { border-bottom: none; }
 }
 
 /* ─── Resources 2×2 grid ───────────────────────────────── */
@@ -757,10 +761,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   padding: .65rem .75rem;
 }
 
-.resources-grid .resource-group + .resource-group {
-  border-top: 1px solid var(--border); /* kept: each group has its own border */
-  padding-top: 0; /* remove extra padding; spacing is handled by grid gap */
-}
+/* Each resource group already has a full border; gap handles all spacing.
+   The adjacent-sibling rule from the outer scope is intentionally not repeated
+   here — every group retains uniform padding on all sides. */
 
 /* Attributes */
 .attr-grid {

@@ -81,6 +81,14 @@ const GoCharacter = {
     this.activeIdx = GoUtils.clamp(this.activeIdx, 0, this.characters.length - 1);
     GoStorage.saveCharacters(this.characters);
     this.render();
+
+    /* One-time delegated listener: keep the stat banner live whenever
+       any field inside the character tab changes. */
+    const tabEl = document.getElementById('character-tab');
+    if (tabEl) {
+      tabEl.addEventListener('input',  () => this._updateStatBanner());
+      tabEl.addEventListener('change', () => this._updateStatBanner());
+    }
   },
 
   _save() {
@@ -928,14 +936,6 @@ const GoCharacter = {
     this._renderShrines();
     this._attachCharEvents();
     this._refreshDerivedFromGiftModifiers();
-
-    /* Attach a one-time delegated listener so the stat banner stays
-       live whenever any field in the tab changes value. */
-    if (!this._bannerListenerAttached) {
-      el.addEventListener('input',  () => this._updateStatBanner());
-      el.addEventListener('change', () => this._updateStatBanner());
-      this._bannerListenerAttached = true;
-    }
   },
 
   /* ─── Words render ──────────────────────────────────────────────── */
