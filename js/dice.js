@@ -172,7 +172,7 @@ const GoDice = {
             <label class="form-label">Bonus Dice
               <select id="fray-bonus-dice" class="input-sm">
                 <option value="">None</option>
-                ${['1d4','1d6','1d8','1d10','1d12'].map(d => `<option value="${d}">${d}</option>`).join('')}
+                ${[4,6,8,10,12].flatMap(s => Array.from({length:10},(_,i)=>`${i+1}d${s}`)).map(d => `<option value="${d}">${d}</option>`).join('')}
               </select>
             </label>
             <span id="fray-notation" class="fray-badge">1d6</span>
