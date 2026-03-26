@@ -479,6 +479,17 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   max-width: 360px;
 }
 
+/* Servants & Minions add form – mirrors add-combatant-form layout */
+.add-servant-form {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+
+.add-servant-form .input-main { max-width: 180px; }
+.add-servant-form .input-sm   { max-width: 80px; }
+
 .combatant-list {
   display: flex;
   flex-direction: column;
@@ -1401,6 +1412,7 @@ tr.apo-gained td { background: color-mix(in srgb, var(--gold) 8%, transparent); 
   .panel-grid { grid-template-columns: 1fr; }
   main { padding: 1rem .75rem 3rem; }
   .add-combatant-form .input-main { max-width: 100%; }
+  .add-servant-form .input-main   { max-width: 100%; }
 }
 
 /* ─── Data Editor ───────────────────────────────────────── */
