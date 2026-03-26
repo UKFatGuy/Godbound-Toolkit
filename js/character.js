@@ -47,8 +47,10 @@ const GoCharacter = {
 
       effort:    { total: 2, committedDay: 0, committedScene: 0, bonus: 0 },
       dominion:  { earned: 0, spent: 0, total: 0 },
+      divineServant: false,
+      servantName:   '',
       influence: { max: 0, current: 0, bonus: 0 },
-      wealth:    { total: 0, free: 0 },
+      wealth:    { total: 0, free: 0, cult: 0 },
 
       apotheosis: {},
 
@@ -58,6 +60,7 @@ const GoCharacter = {
         holyLaws: '', features: '', problems: '', points: 0
       },
       shrines: [],
+      servants: [],
 
       words:          [],
       martialStrifes: [],
@@ -112,6 +115,7 @@ const GoCharacter = {
     if (!Array.isArray(char.equipment)) char.equipment = [];
     if (!Array.isArray(char.artifacts)) char.artifacts = [];
     if (!Array.isArray(char.shrines)) char.shrines = [];
+    if (!Array.isArray(char.servants)) char.servants = [];
     if (!char.customAttackAttr) char.customAttackAttr = GoCharacter.DEFAULT_CUSTOM_ATTACK_ATTR;
 
     /* Migrate old dominion structure (just total) to new earned/spent/total */
@@ -121,6 +125,14 @@ const GoCharacter = {
       char.dominion.spent  = 0;
     }
     char.dominion.total = (char.dominion.earned || 0) + (char.dominion.spent || 0);
+
+    /* Ensure divine servant fields */
+    if (char.divineServant === undefined) char.divineServant = false;
+    if (char.servantName   === undefined) char.servantName   = '';
+
+    /* Ensure wealth structure with cult cache */
+    if (!char.wealth) char.wealth = { total: 0, free: 0, cult: 0 };
+    if (char.wealth.cult === undefined) char.wealth.cult = 0;
 
     GoUtils.ARCANE_PRACTICES.forEach(cfg => {
       char[cfg.key] = this._normalizePracticeList(char[cfg.key]);
@@ -705,7 +717,7 @@ const GoCharacter = {
           <div class="resource-group">
             <h3 class="section-subtitle">Dominion</h3>
             <div class="form-grid mt-sm">
-              <label class="form-label">Dominion Earned
+              <label class="form-label">Dominion Free
                 <input type="number" class="input-sm" data-field="dominion-earned"
                   value="${c.dominion.earned || 0}" min="0">
               </label>
@@ -716,6 +728,18 @@ const GoCharacter = {
               <label class="form-label">Total Dominion
                 <input type="number" class="input-sm" data-field="dominion-total"
                   value="${c.dominion.total || 0}" min="0" readonly>
+              </label>
+            </div>
+            <div class="form-grid mt-sm">
+              <label class="checkbox-label">
+                <input type="checkbox" id="divine-servant-check" data-field="divine-servant"
+                  ${c.divineServant ? 'checked' : ''}>
+                Divine Servant
+              </label>
+              <label class="form-label" id="servant-name-wrap" ${c.divineServant ? '' : 'style="display:none"'}>
+                Servant Name
+                <input type="text" class="input-main" data-field="servant-name"
+                  value="${this._esc(c.servantName || '')}" placeholder="Name of divine servant…">
               </label>
             </div>
           </div>
@@ -772,13 +796,17 @@ const GoCharacter = {
           <div class="resource-group">
             <h3 class="section-subtitle">Wealth</h3>
             <div class="form-grid mt-sm">
-              <label class="form-label">Total Wealth
+              <label class="form-label">Cache #1
                 <input type="number" class="input-sm" data-field="wealth-total"
                   value="${wealth.total || 0}" min="0">
               </label>
-              <label class="form-label">Free Wealth
+              <label class="form-label">Cache #2
                 <input type="number" class="input-sm" data-field="wealth-free"
                   value="${wealth.free || 0}" min="0">
+              </label>
+              <label class="form-label">Cult Wealth
+                <input type="number" class="input-sm" data-field="wealth-cult"
+                  value="${wealth.cult || 0}" min="0">
               </label>
             </div>
           </div>
@@ -951,6 +979,28 @@ const GoCharacter = {
         </div>
       </div>
 
+      <!-- ══ Servants & Minions ════════════════════════════════════ -->
+      <div class="card" id="servants-section">
+        <div class="card-header">
+          <h2 class="card-title">Servants &amp; Minions</h2>
+        </div>
+        <div class="stock-enemy-row mt-sm">
+          <label class="stock-enemy-label">Import from Data Editor:</label>
+          <select id="servant-stock-select" class="input-main" aria-label="Load a stock enemy as a servant">
+            <option value="">— select stock enemy —</option>
+          </select>
+          <button id="add-servant-from-stock-btn" class="btn-secondary">+ Add</button>
+        </div>
+        <div class="add-servant-form mt-sm">
+          <input id="servant-name-input" type="text" class="input-main" placeholder="Name" aria-label="Servant name">
+          <input id="servant-hp-input"   type="number" class="input-sm" placeholder="HP" aria-label="HP" min="1">
+          <input id="servant-ac-input"   type="number" class="input-sm" placeholder="AC" aria-label="AC" min="0">
+          <input id="servant-notes-input" type="text" class="input-main" placeholder="Notes" aria-label="Notes">
+          <button id="add-servant-btn" class="btn-primary">Add Servant</button>
+        </div>
+        <div id="servants-list" class="mt-sm"></div>
+      </div>
+
       <!-- ══ Equipment ══════════════════════════════════════════════ -->
       <div class="card" id="equipment-section">
         <h2 class="card-title">Equipment</h2>
@@ -975,6 +1025,7 @@ const GoCharacter = {
     this._renderArcaneArts();
     this._renderEquipment();
     this._renderShrines();
+    this._renderServants();
     this._attachCharEvents();
     this._refreshDerivedFromGiftModifiers();
     this._updateAttackBonuses();
@@ -1323,6 +1374,90 @@ const GoCharacter = {
       </table>`;
 
     this._attachShrineEvents();
+  },
+
+  /* ─── Servants render ───────────────────────────────────────────── */
+
+  _renderServants() {
+    const el = document.getElementById('servants-list');
+    if (!el) return;
+
+    /* Populate the stock enemy dropdown */
+    const sel = document.getElementById('servant-stock-select');
+    if (sel) {
+      const enemies = (typeof GoDataEditor !== 'undefined' && GoDataEditor.data)
+        ? (GoDataEditor.data.enemies || []) : [];
+      sel.innerHTML = `<option value="">— select stock enemy —</option>` +
+        enemies.map(e =>
+          `<option value="${this._esc(e.id)}"
+             data-name="${this._esc(e.name)}"
+             data-hp="${e.hp}"
+             data-ac="${e.ac}"
+             data-notes="${this._esc(e.notes || '')}">${this._esc(e.name)} (HP&nbsp;${e.hp}, AC&nbsp;${e.ac})</option>`
+        ).join('');
+    }
+
+    const servants = this.char.servants || [];
+    if (!servants.length) {
+      el.innerHTML = '<p class="empty-msg-sm">No servants or minions yet.</p>';
+      return;
+    }
+
+    el.innerHTML = `
+      <table class="equip-table">
+        <thead>
+          <tr><th>Name</th><th>HP</th><th>AC</th><th>Notes</th><th></th></tr>
+        </thead>
+        <tbody>
+          ${servants.map(s => `
+            <tr data-servant-id="${s.id}">
+              <td><input type="text" class="input-main servant-field" value="${this._esc(s.name || '')}"
+                data-id="${s.id}" data-f="name" aria-label="Servant name"></td>
+              <td><input type="number" class="input-sm servant-field" value="${s.hp || 0}"
+                data-id="${s.id}" data-f="hp" min="0" aria-label="Servant HP"></td>
+              <td><input type="number" class="input-sm servant-field" value="${s.ac || 0}"
+                data-id="${s.id}" data-f="ac" min="0" aria-label="Servant AC"></td>
+              <td><input type="text" class="input-main servant-field" value="${this._esc(s.notes || '')}"
+                data-id="${s.id}" data-f="notes" placeholder="Notes" aria-label="Servant notes"></td>
+              <td><button class="btn-icon remove-servant-btn" data-id="${s.id}" title="Remove servant">✕</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+
+    this._attachServantEvents();
+  },
+
+  _attachServantEvents() {
+    document.querySelectorAll('.remove-servant-btn').forEach(btn =>
+      btn.addEventListener('click', () => this._removeServant(btn.dataset.id)));
+
+    document.querySelectorAll('.servant-field').forEach(inp =>
+      inp.addEventListener('change', () => {
+        const servant = (this.char.servants || []).find(s => s.id === inp.dataset.id);
+        if (!servant) return;
+        servant[inp.dataset.f] = inp.type === 'number' ? (parseInt(inp.value, 10) || 0) : inp.value;
+        this._save();
+      }));
+  },
+
+  _addServant(data) {
+    if (!Array.isArray(this.char.servants)) this.char.servants = [];
+    this.char.servants.push({
+      id:    GoUtils.uid(),
+      name:  (data.name  || '').trim(),
+      hp:    parseInt(data.hp,  10) || 0,
+      ac:    parseInt(data.ac,  10) || 0,
+      notes: (data.notes || '').trim()
+    });
+    this._save();
+    this._renderServants();
+  },
+
+  _removeServant(id) {
+    if (!Array.isArray(this.char.servants)) return;
+    this.char.servants = this.char.servants.filter(s => s.id !== id);
+    this._save();
+    this._renderServants();
   },
 
   _updateAttrMod(attr) {
@@ -1677,6 +1812,46 @@ const GoCharacter = {
     /* Add Shrine button */
     document.getElementById('add-shrine-btn')?.addEventListener('click', () => this.addShrine());
 
+    /* Divine Servant checkbox – toggle servant name visibility */
+    document.getElementById('divine-servant-check')?.addEventListener('change', e => {
+      const wrap = document.getElementById('servant-name-wrap');
+      if (wrap) wrap.style.display = e.target.checked ? '' : 'none';
+      this.char.divineServant = e.target.checked;
+      this._save();
+    });
+
+    /* Servants & Minions – stock enemy dropdown pre-fill */
+    document.getElementById('servant-stock-select')?.addEventListener('change', e => {
+      const opt = e.target.options[e.target.selectedIndex];
+      if (!opt || !opt.value) return;
+      const nameEl  = document.getElementById('servant-name-input');
+      const hpEl    = document.getElementById('servant-hp-input');
+      const acEl    = document.getElementById('servant-ac-input');
+      const notesEl = document.getElementById('servant-notes-input');
+      if (nameEl)  nameEl.value  = opt.dataset.name  || '';
+      if (hpEl)    hpEl.value    = opt.dataset.hp    || '';
+      if (acEl)    acEl.value    = opt.dataset.ac    || '';
+      if (notesEl) notesEl.value = opt.dataset.notes || '';
+      e.target.value = '';
+    });
+
+    /* Servants & Minions – Add from stock enemy button */
+    document.getElementById('add-servant-from-stock-btn')?.addEventListener('click', () => {
+      const nameEl  = document.getElementById('servant-name-input');
+      const name = nameEl ? nameEl.value.trim() : '';
+      if (!name) { GoApp.toast('Select a stock enemy first', 'error'); return; }
+      this._addServantFromForm();
+    });
+
+    /* Servants & Minions – Add servant button */
+    document.getElementById('add-servant-btn')?.addEventListener('click', () => {
+      this._addServantFromForm();
+    });
+
+    document.getElementById('servant-name-input')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') this._addServantFromForm();
+    });
+
     /* Apotheosis checkboxes – save immediately on change */
     document.querySelectorAll('.apo-gained-check').forEach(cb => {
       cb.addEventListener('change', () => {
@@ -1687,6 +1862,25 @@ const GoCharacter = {
         this._save();
       });
     });
+  },
+
+  _addServantFromForm() {
+    const nameEl  = document.getElementById('servant-name-input');
+    const hpEl    = document.getElementById('servant-hp-input');
+    const acEl    = document.getElementById('servant-ac-input');
+    const notesEl = document.getElementById('servant-notes-input');
+    const name = nameEl ? nameEl.value.trim() : '';
+    if (!name) { GoApp.toast('Servant needs a name', 'error'); return; }
+    this._addServant({
+      name,
+      hp:    hpEl    ? hpEl.value    : 0,
+      ac:    acEl    ? acEl.value    : 0,
+      notes: notesEl ? notesEl.value : ''
+    });
+    if (nameEl)  nameEl.value  = '';
+    if (hpEl)    hpEl.value    = '';
+    if (acEl)    acEl.value    = '';
+    if (notesEl) notesEl.value = '';
   },
 
   _attachWordEvents() {
@@ -1895,11 +2089,14 @@ const GoCharacter = {
       'effort-bonus':     v => c.effort.bonus      = parseInt(v,10)||0,
       'dominion-earned':  v => { c.dominion.earned = parseInt(v,10)||0; c.dominion.total = (c.dominion.earned||0) + (c.dominion.spent||0); },
       'dominion-spent':   v => { c.dominion.spent  = parseInt(v,10)||0; c.dominion.total = (c.dominion.earned||0) + (c.dominion.spent||0); },
+      'divine-servant':   v => c.divineServant = (v === 'true'),
+      'servant-name':     v => c.servantName   = v,
       'influence-current':v => c.influence.current = parseInt(v,10)||0,
       'influence-max':    v => c.influence.max     = parseInt(v,10)||0,
       'influence-bonus':  v => c.influence.bonus   = parseInt(v,10)||0,
       'wealth-total':     v => { if (!c.wealth) c.wealth = {}; c.wealth.total = parseInt(v,10)||0; },
       'wealth-free':      v => { if (!c.wealth) c.wealth = {}; c.wealth.free  = parseInt(v,10)||0; },
+      'wealth-cult':      v => { if (!c.wealth) c.wealth = {}; c.wealth.cult  = parseInt(v,10)||0; },
       'cult-name':        v => { if (!c.cult) c.cult = {}; c.cult.name      = v; },
       'cult-demand':      v => { if (!c.cult) c.cult = {}; c.cult.demand    = parseInt(v,10)||0; },
       'cult-power':       v => { if (!c.cult) c.cult = {}; c.cult.power     = parseInt(v,10)||0; },
@@ -1915,7 +2112,7 @@ const GoCharacter = {
 
     document.querySelectorAll('[data-field]').forEach(el => {
       const field  = el.dataset.field;
-      const value  = el.value;
+      const value  = el.type === 'checkbox' ? (el.checked ? 'true' : 'false') : el.value;
 
       if (field.startsWith('attr-')) {
         const attr = field.slice(5);
