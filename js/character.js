@@ -46,7 +46,7 @@ const GoCharacter = {
       saves: { hardiness: 15, evasion: 15, spirit: 15 },
 
       effort:    { total: 2, committedDay: 0, committedScene: 0, bonus: 0 },
-      dominion:  { total: 0 },
+      dominion:  { earned: 0, spent: 0, total: 0 },
       influence: { max: 0, current: 0, bonus: 0 },
       wealth:    { total: 0, free: 0 },
 
@@ -113,6 +113,14 @@ const GoCharacter = {
     if (!Array.isArray(char.artifacts)) char.artifacts = [];
     if (!Array.isArray(char.shrines)) char.shrines = [];
     if (!char.customAttackAttr) char.customAttackAttr = GoCharacter.DEFAULT_CUSTOM_ATTACK_ATTR;
+
+    /* Migrate old dominion structure (just total) to new earned/spent/total */
+    if (!char.dominion) char.dominion = { earned: 0, spent: 0, total: 0 };
+    if (char.dominion.earned === undefined) {
+      char.dominion.earned = char.dominion.total || 0;
+      char.dominion.spent  = 0;
+    }
+    char.dominion.total = (char.dominion.earned || 0) + (char.dominion.spent || 0);
 
     GoUtils.ARCANE_PRACTICES.forEach(cfg => {
       char[cfg.key] = this._normalizePracticeList(char[cfg.key]);
@@ -696,11 +704,18 @@ const GoCharacter = {
           <!-- Dominion -->
           <div class="resource-group">
             <h3 class="section-subtitle">Dominion</h3>
-            <p class="formula-note">Base (1 + Level) + from Cult + from Effort spending</p>
             <div class="form-grid mt-sm">
+              <label class="form-label">Dominion Earned
+                <input type="number" class="input-sm" data-field="dominion-earned"
+                  value="${c.dominion.earned || 0}" min="0">
+              </label>
+              <label class="form-label">Dominion Spent
+                <input type="number" class="input-sm" data-field="dominion-spent"
+                  value="${c.dominion.spent || 0}" min="0">
+              </label>
               <label class="form-label">Total Dominion
-                <input type="number" class="input-sm" data-field="dominion"
-                  value="${c.dominion.total}" min="0">
+                <input type="number" class="input-sm" data-field="dominion-total"
+                  value="${c.dominion.total || 0}" min="0" readonly>
               </label>
             </div>
           </div>
@@ -746,7 +761,7 @@ const GoCharacter = {
                 <input type="number" class="input-sm" data-field="influence-bonus"
                   value="${c.influence.bonus || 0}" min="0">
               </label>
-              <label class="form-label">Influence (Used)
+              <label class="form-label">Influence Committed
                 <input type="number" class="input-sm" data-field="influence-current"
                   value="${c.influence.current}" min="0">
               </label>
@@ -1635,6 +1650,22 @@ const GoCharacter = {
     document.querySelector('[data-field="influence-bonus"]')
       ?.addEventListener('input', () => { this._updateInfluence(); });
 
+    /* Recalculate Total Dominion when Earned or Spent changes */
+    const _updateDominionTotal = () => {
+      const earnedEl = document.querySelector('[data-field="dominion-earned"]');
+      const spentEl  = document.querySelector('[data-field="dominion-spent"]');
+      const totalEl  = document.querySelector('[data-field="dominion-total"]');
+      if (totalEl) {
+        const earned = earnedEl ? (parseInt(earnedEl.value, 10) || 0) : 0;
+        const spent  = spentEl  ? (parseInt(spentEl.value,  10) || 0) : 0;
+        totalEl.value = earned + spent;
+      }
+    };
+    document.querySelector('[data-field="dominion-earned"]')
+      ?.addEventListener('input', _updateDominionTotal);
+    document.querySelector('[data-field="dominion-spent"]')
+      ?.addEventListener('input', _updateDominionTotal);
+
     /* Recalculate AC when armour settings change */
     document.querySelector('[data-field="armor-type"]')
       ?.addEventListener('change', () => { this._updateAC(); });
@@ -1862,7 +1893,8 @@ const GoCharacter = {
       'effort-day':       v => c.effort.committedDay   = parseInt(v,10)||0,
       'effort-scene':     v => c.effort.committedScene = parseInt(v,10)||0,
       'effort-bonus':     v => c.effort.bonus      = parseInt(v,10)||0,
-      'dominion':         v => c.dominion.total    = parseInt(v,10)||0,
+      'dominion-earned':  v => { c.dominion.earned = parseInt(v,10)||0; c.dominion.total = (c.dominion.earned||0) + (c.dominion.spent||0); },
+      'dominion-spent':   v => { c.dominion.spent  = parseInt(v,10)||0; c.dominion.total = (c.dominion.earned||0) + (c.dominion.spent||0); },
       'influence-current':v => c.influence.current = parseInt(v,10)||0,
       'influence-max':    v => c.influence.max     = parseInt(v,10)||0,
       'influence-bonus':  v => c.influence.bonus   = parseInt(v,10)||0,
