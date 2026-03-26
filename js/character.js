@@ -1814,8 +1814,7 @@ const GoCharacter = {
 
     /* Divine Servant checkbox – toggle servant name visibility */
     document.getElementById('divine-servant-check')?.addEventListener('change', e => {
-      const wrap = document.getElementById('servant-name-wrap');
-      if (wrap) wrap.style.display = e.target.checked ? '' : 'none';
+      this._toggleServantNameVisibility(e.target.checked);
       this.char.divineServant = e.target.checked;
       this._save();
     });
@@ -1837,9 +1836,9 @@ const GoCharacter = {
 
     /* Servants & Minions – Add from stock enemy button */
     document.getElementById('add-servant-from-stock-btn')?.addEventListener('click', () => {
-      const nameEl  = document.getElementById('servant-name-input');
+      const nameEl = document.getElementById('servant-name-input');
       const name = nameEl ? nameEl.value.trim() : '';
-      if (!name) { GoApp.toast('Select a stock enemy first', 'error'); return; }
+      if (!name) { GoApp.toast('Please enter a servant name', 'error'); return; }
       this._addServantFromForm();
     });
 
@@ -1862,6 +1861,11 @@ const GoCharacter = {
         this._save();
       });
     });
+  },
+
+  _toggleServantNameVisibility(show) {
+    const wrap = document.getElementById('servant-name-wrap');
+    if (wrap) wrap.style.display = show ? '' : 'none';
   },
 
   _addServantFromForm() {
