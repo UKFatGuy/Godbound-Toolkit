@@ -36,6 +36,7 @@ docker compose up
 
 - Plain JavaScript — no build step, no bundler
 - Follow the patterns used in the existing `js/` modules (IIFE modules, `'use strict'`)
+- The current modules are: `utils`, `storage`, `theme`, `dice`, `combat`, `character`, `dataeditor`, `importexport`, `print`, `app`
 - Keep CSS changes inside the existing variable / theming system in `css/styles.css`
 - Do **not** commit files from the `data/` directory (user data, already in `.gitignore`)
 - Do **not** commit files from the `Reference/` directory
