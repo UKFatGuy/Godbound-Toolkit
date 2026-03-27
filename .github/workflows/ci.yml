@@ -1,0 +1,73 @@
+# CI: validate that dependencies install cleanly and the server starts
+#
+# This workflow is required to pass on all pull requests targeting main.
+# Combined with CODEOWNERS, it ensures nothing lands on main without
+# both a green check AND the owner's explicit approval.
+
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for known vulnerabilities
+        run: npm audit --audit-level=high
+
+      - name: Verify server starts and exits cleanly
+        # Start the server, poll until it responds (or timeout), then shut it
+        # down cleanly.  Catches missing-module errors and startup crashes.
+        run: |
+          node server.js &
+          SERVER_PID=$!
+
+          # Poll until the server responds or we time out (10 s)
+          READY=0
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:3000/ -o /dev/null 2>/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 0.5
+          done
+
+          # Gracefully shut down before checking the result
+          kill "$SERVER_PID"
+          wait "$SERVER_PID" 2>/dev/null
+          EXIT_CODE=$?
+
+          # SIGTERM produces exit code 143 (128+15) — that is expected and fine.
+          # Any other non-zero code indicates a crash.
+          if [ "$READY" -eq 0 ]; then
+            echo "ERROR: server did not become ready within 10 s"
+            exit 1
+          fi
+          if [ "$EXIT_CODE" -ne 0 ] && [ "$EXIT_CODE" -ne 143 ]; then
+            echo "ERROR: server exited with unexpected code $EXIT_CODE"
+            exit 1
+          fi
+          echo "Server smoke-test passed (exit code $EXIT_CODE)"
