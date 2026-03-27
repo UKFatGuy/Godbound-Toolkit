@@ -2,7 +2,7 @@
 
 A full-function, no-build, browser-based companion app for the **Godbound** TTRPG by Kevin Crawford (Sine Nomine Publishing).
 
-**TL;DR:** Open `index.html` in a modern browser to use the dice roller, combat tracker, and character sheet. All data is saved locally in your browser.
+**TL;DR:** Open `index.html` in a modern browser (or run via Node.js/Docker) to use the dice roller, combat tracker, character sheet, data editor, import/export tools, and more. All data is saved locally in your browser and optionally on the server.
 
 ## Features
 
@@ -33,6 +33,35 @@ A full-function, no-build, browser-based companion app for the **Godbound** TTRP
 - **Equipment**: weapons (damage dice, attack modifier), armour (AC bonus), and other items
 - **Notes**: freeform text area
 - All character data persisted to `localStorage`
+
+### Data Editor
+- **Word & Gift templates**: create reusable Words of Power (with Gifts) that can be applied to any character with one click
+- **Weapon templates**: define standard weapon loadouts and apply them instantly
+- **Equipment templates**: store common item sets for quick assignment
+- **Stock enemies**: build a roster of named enemies (HP, AC, notes) that populate the Combat Tracker's enemy drop-down
+
+### Import / Export
+- **Export**: download a single JSON file containing all characters, data templates, and dice history
+- **Import**: load a previously exported file with three modes:
+  - **Merge** – add imported characters and templates alongside existing ones (skips ID duplicates)
+  - **Replace** – overwrite all local data with the imported file
+  - **Cancel** – abort without making changes
+
+### Print & Share
+- **Printable summary**: generate a formatted, printer-friendly character summary in a new browser window
+- **Shareable URL**: encode a character as a base64 query string (`?share=…`) — paste the link for anyone to import the character without a server
+
+### Themes
+Switch between four visual themes via the theme selector in the header:
+
+| Theme | Appearance |
+|---|---|
+| Dark Fantasy *(default)* | Deep purple / gold |
+| High Fantasy | Warm parchment / green |
+| Retro Terminal | Green-on-black terminal |
+| Sci-Fi | Cyan / dark steel |
+
+Theme preference is saved to `localStorage` and applied immediately on page load.
 
 ## Requirements
 
@@ -115,6 +144,7 @@ This app saves:
 - Dice roll history
 - Combat tracker state
 - Character sheets
+- Data Editor templates (words, weapons, equipment, enemies)
 
 When running via the Node server or Docker, data is written server-side to `data/appdata.json` **and** kept in `localStorage`. On page load the app re-hydrates from the server, so data is shared across browser profiles on the same server.
 
@@ -130,19 +160,24 @@ When opened as a plain file (`file://`), the app falls back to `localStorage` on
 ```
 index.html          Main entry point
 css/
-  styles.css        Dark fantasy theme
+  styles.css        Theme system and all styles (4 switchable themes)
 js/
   utils.js          Dice math, rule tables, helpers
-  storage.js        localStorage wrapper
+  storage.js        localStorage + server-sync wrapper
+  theme.js          Theme manager (Dark Fantasy / High Fantasy / Retro Terminal / Sci-Fi)
   dice.js           Dice roller UI logic
   combat.js         Combat tracker UI logic
   character.js      Character sheet UI logic
+  dataeditor.js     Data Editor UI logic (word/weapon/equipment/enemy templates)
+  importexport.js   Import and export all app data as JSON
+  print.js          Print and share character sheets
   app.js            App initialisation and tab navigation
+server.js           Express server — static file serving + REST persistence API
 ```
 
 ## Extending the Toolkit
 
-Each module (`GoDice`, `GoCombat`, `GoCharacter`) is a plain object in its own file.
+Each module (`GoDice`, `GoCombat`, `GoCharacter`, `GoDataEditor`, `GoImportExport`, `GoPrint`, `GoTheme`) is a plain object in its own file.
 
 To add a new tool:
 1. Create `js/mytool.js` and add a `GoMyTool` object with `init()` and `render()` methods.
@@ -152,13 +187,13 @@ To add a new tool:
 
 ## Roadmap (ideas)
 
-- Export/import characters and encounters (JSON)
 - Better mobile layout improvements
-- Printable / shareable character summaries
+- Spell/ability reference look-up
+- Session notes / encounter log
 
 ## Contributing
 
-Issues and PRs are welcome. If you’re planning a larger change, consider opening an issue first to discuss scope.
+Issues and PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for branch rules, code style guidelines, and the development setup. If you’re planning a larger change, consider opening an issue first to discuss scope.
 
 ## License
 
