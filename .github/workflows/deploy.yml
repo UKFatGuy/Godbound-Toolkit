@@ -89,7 +89,7 @@ jobs:
       - name: Deploy over SSH
         # Requires secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_PATH
         # Optional secret:  DEPLOY_PORT (defaults to 22)
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
