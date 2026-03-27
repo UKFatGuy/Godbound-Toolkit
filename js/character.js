@@ -717,7 +717,7 @@ const GoCharacter = {
           <div class="resource-group">
             <h3 class="section-subtitle">Dominion</h3>
             <div class="form-grid mt-sm">
-              <label class="form-label">Dominion Free
+              <label class="form-label">Dominion<br>Free
                 <input type="number" class="input-sm" data-field="dominion-earned"
                   value="${c.dominion.earned || 0}" min="0">
               </label>
@@ -736,7 +736,7 @@ const GoCharacter = {
                   ${c.divineServant ? 'checked' : ''}>
                 Divine Servant
               </label>
-              <label class="form-label" id="servant-name-wrap" ${c.divineServant ? '' : 'style="display:none"'}>
+              <label class="form-label col-span-2" id="servant-name-wrap" ${c.divineServant ? '' : 'style="display:none"'}>
                 Servant Name
                 <input type="text" class="input-main" data-field="servant-name"
                   value="${this._esc(c.servantName || '')}" placeholder="Name of divine servant…">
@@ -757,18 +757,18 @@ const GoCharacter = {
                 <input type="number" class="input-sm" data-field="effort-bonus"
                   value="${c.effort.bonus || 0}" min="0">
               </label>
-              <label class="form-label">Committed (Day)
-                <input type="number" class="input-sm" data-field="effort-day"
-                  value="${c.effort.committedDay}" min="0">
-              </label>
-              <label class="form-label">Committed (Scene)
-                <input type="number" class="input-sm" data-field="effort-scene"
-                  value="${c.effort.committedScene}" min="0">
-              </label>
               <div class="form-label">
                 <span class="sub-label">Available</span>
                 <span class="effort-avail">${c.effort.total - c.effort.committedDay - c.effort.committedScene}</span>
               </div>
+              <label class="form-label">Committed (Scene)
+                <input type="number" class="input-sm" data-field="effort-scene"
+                  value="${c.effort.committedScene}" min="0">
+              </label>
+              <label class="form-label">Committed (Day)
+                <input type="number" class="input-sm" data-field="effort-day"
+                  value="${c.effort.committedDay}" min="0">
+              </label>
             </div>
           </div>
 
