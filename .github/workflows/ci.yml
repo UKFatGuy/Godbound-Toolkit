@@ -3,6 +3,14 @@
 # This workflow is required to pass on all pull requests targeting main.
 # Combined with CODEOWNERS, it ensures nothing lands on main without
 # both a green check AND the owner's explicit approval.
+#
+# Knobs
+# -----
+# NODE_VERSION         – Node.js version installed by setup-node (env var below).
+#                        Kept in sync with the FROM node:xx-alpine line in Dockerfile.
+# READY_TIMEOUT_SECONDS – seconds the smoke test will wait for the server to respond
+#                        before declaring failure.  Override at the job level or as a
+#                        repository/environment variable if your runner is slow.
 
 name: CI
 
@@ -17,6 +25,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # Pin the Node.js version.  Match the major version used in the Dockerfile
+  # (FROM node:20-alpine).  Update both together when upgrading.
+  NODE_VERSION: "20.x"
+
 jobs:
   validate:
     name: Validate
@@ -26,10 +39,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
       - name: Install dependencies
@@ -41,21 +54,29 @@ jobs:
       - name: Verify server starts and exits cleanly
         # Start the server, poll until it responds (or timeout), then shut it
         # down cleanly.  Catches missing-module errors and startup crashes.
+        #
+        # READY_TIMEOUT_SECONDS can be overridden via a repository/environment
+        # variable or by editing the default value below.
+        env:
+          READY_TIMEOUT_SECONDS: ${{ vars.READY_TIMEOUT_SECONDS || 60 }}
         run: |
           node server.js &
           SERVER_PID=$!
 
-          # Poll until the server responds or we time out (10 s)
+          echo "Waiting up to ${READY_TIMEOUT_SECONDS}s for server to become ready…"
+
+          # Poll /health every 0.5 s until ready or timeout expires.
           READY=0
-          for i in $(seq 1 20); do
-            if curl -sf http://localhost:3000/ -o /dev/null 2>/dev/null; then
+          DEADLINE=$(( $(date +%s) + READY_TIMEOUT_SECONDS ))
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            if curl -sf http://localhost:3000/health -o /dev/null 2>/dev/null; then
               READY=1
               break
             fi
             sleep 0.5
           done
 
-          # Gracefully shut down before checking the result
+          # Gracefully shut down before checking the result.
           kill "$SERVER_PID"
           wait "$SERVER_PID" 2>/dev/null
           EXIT_CODE=$?
@@ -63,7 +84,7 @@ jobs:
           # SIGTERM produces exit code 143 (128+15) — that is expected and fine.
           # Any other non-zero code indicates a crash.
           if [ "$READY" -eq 0 ]; then
-            echo "ERROR: server did not become ready within 10 s"
+            echo "ERROR: server did not become ready within ${READY_TIMEOUT_SECONDS} s"
             exit 1
           fi
           if [ "$EXIT_CODE" -ne 0 ] && [ "$EXIT_CODE" -ne 143 ]; then

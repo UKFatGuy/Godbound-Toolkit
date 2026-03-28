@@ -58,6 +58,13 @@ app.post('/api/data', apiLimiter, (req, res) => {
     });
 });
 
+/* ── Health check ─────────────────────────────────────────────────── */
+
+// Lightweight endpoint used by the CI smoke test and container health checks.
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+});
+
 /* ── Start ────────────────────────────────────────────────────────── */
 
 app.listen(PORT, () => {
