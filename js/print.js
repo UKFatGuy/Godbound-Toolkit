@@ -102,17 +102,36 @@ const GoPrint = {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   },
 
-  /* ─── HTML summary builder ──────────────────────────────────────── */
+  /* ─── HTML sheet builder ────────────────────────────────────────── */
 
   _buildSummaryHTML(c) {
     const e       = s => this._esc(s);
     const cult    = c.cult    || {};
     const wealth  = c.wealth  || {};
+    const effort  = c.effort  || {};
+    const dominion = c.dominion || {};
+    const influence = c.influence || {};
+    const hp      = c.hp      || {};
     const attrs   = c.attributes  || {};
     const bonuses = c.attrBonuses || {};
 
     const attrFull = { str:'Strength', con:'Constitution', dex:'Dexterity',
                        int:'Intelligence', wis:'Wisdom', cha:'Charisma' };
+
+    /* ── Helper: compute attribute mod (base score + bonus) ── */
+    const computeMod = attr => {
+      const score = attrs[attr] || 10;
+      const bonus = bonuses[attr] || 0;
+      return GoUtils.getAttrMod(score) + bonus;
+    };
+
+    /* ── Derived combat values ── */
+    const level      = c.level || 1;
+    const meleeAtk   = level + computeMod('str');
+    const rangedAtk  = level + computeMod('dex');
+    const customAttr = c.customAttackAttr || 'str';
+    const customAtk  = level + computeMod(customAttr);
+    const frayDice   = GoUtils.getFrayDiceDisplay(level, c.frayBonusDice);
 
     /* ── Attribute table rows ── */
     const attrRows = ['str','con','dex','int','wis','cha'].map(a => {
@@ -133,26 +152,90 @@ const GoPrint = {
     const wordsHtml = (c.words || []).length
       ? (c.words || []).map(w => {
           const giftsRows = w.gifts && w.gifts.length
-            ? w.gifts.map(g => `
+            ? w.gifts.map(g => {
+                const modNote = g.modifiesAttribute
+                  ? ` <em style="font-size:.8em;color:#666">(${g.modType === 'score' ? 'Score' : 'Bonus'}: ${g.modValue >= 0 ? '+' + g.modValue : g.modValue} ${String(g.modAttribute || 'str').toUpperCase()})</em>`
+                  : '';
+                return `
               <tr>
-                <td>${e(g.name)}</td>
+                <td>${e(g.name)}${modNote}</td>
                 <td>${e(g.type || 'lesser')}</td>
                 <td>${e(g.activation || '')}</td>
                 <td class="num">${g.smite ? '✓' : ''}</td>
                 <td>${e(g.effort || '')}</td>
+                <td class="num">${g.active ? '◉' : '○'}</td>
                 <td class="desc">${e(g.description || '')}</td>
-              </tr>`).join('')
-            : `<tr><td colspan="6" class="empty">No gifts</td></tr>`;
+              </tr>`;
+              }).join('')
+            : `<tr><td colspan="7" class="empty">No gifts</td></tr>`;
           return `
           <div class="word-block">
             <div class="word-name">${e(w.name)}</div>
             <table>
-              <thead><tr><th>Gift</th><th>Type</th><th>Activation</th><th>Smite</th><th>Effort</th><th>Description</th></tr></thead>
+              <thead><tr><th>Gift</th><th>Type</th><th>Activation</th><th>Smite</th><th>Effort</th><th>Active</th><th>Description</th></tr></thead>
               <tbody>${giftsRows}</tbody>
             </table>
           </div>`;
         }).join('')
       : '<p class="empty">No Words of Power.</p>';
+
+    /* ── Arcane Arts ── */
+    const arcaneHtml = GoUtils.ARCANE_PRACTICES.map(cfg => {
+      const items = (c[cfg.key] || []);
+      if (!items.length) return '';
+      const blocksHtml = items.map(item => {
+        const entriesRows = item.entries && item.entries.length
+          ? item.entries.map(en => `
+            <tr>
+              <td>${e(en.name)}</td>
+              <td>${e(en.activation || '')}</td>
+              <td>${e(en.effort || '')}</td>
+              <td class="num">${en.active ? '◉' : '○'}</td>
+              <td class="desc">${e(en.description || '')}</td>
+            </tr>`).join('')
+          : `<tr><td colspan="5" class="empty">No ${cfg.entryLabelPlural.toLowerCase()}</td></tr>`;
+        return `
+        <div class="word-block">
+          <div class="word-name">${e(item.name)}${item.notes ? `<span style="font-weight:400;font-size:.85em;color:#555"> — ${e(item.notes)}</span>` : ''}</div>
+          <table>
+            <thead><tr><th>${cfg.entryLabel}</th><th>Activation</th><th>Effort</th><th>Active</th><th>Description</th></tr></thead>
+            <tbody>${entriesRows}</tbody>
+          </table>
+        </div>`;
+      }).join('');
+      return `
+      <div class="section">
+        <div class="section-title">${cfg.title}</div>
+        ${blocksHtml}
+      </div>`;
+    }).join('');
+
+    /* ── Apotheosis gifts ── */
+    const apoGifts = [
+      { lvl:2, name:'Receive the Incense of Faith', act:'Constant' },
+      { lvl:3, name:'Sanctify Shrine',              act:'Action'   },
+      { lvl:3, name:'Smite the Apostate',           act:'Action'   },
+      { lvl:4, name:'Hear Prayer',                  act:'Constant' },
+      { lvl:5, name:'Perceive the Petitioner',      act:'Action'   },
+      { lvl:6, name:'Mark of the Prophet',          act:'Action'   },
+      { lvl:7, name:'Attend the Faithful',          act:'Action'   },
+      { lvl:8, name:'To Bless the Nations',         act:'Action'   },
+    ];
+    const apo = c.apotheosis || {};
+    const apoRows = apoGifts.map(g => {
+      const gained = !!apo[g.name];
+      return `<tr${gained ? ' class="apo-gained-row"' : ''}>
+        <td class="num">${g.lvl}</td>
+        <td>${e(g.name)}</td>
+        <td>${e(g.act)}</td>
+        <td class="num">${gained ? '✓' : ''}</td>
+      </tr>`;
+    }).join('');
+
+    /* ── Servants / Minions ── */
+    const servantRows = (c.servants || []).map(s =>
+      `<tr><td>${e(s.name)}</td><td class="num">${s.hp || 0}</td><td class="num">${s.ac || 0}</td><td>${e(s.notes || '')}</td></tr>`
+    ).join('');
 
     /* ── Equipment ── */
     const weaponRows   = (c.weapons   || []).map(w =>
@@ -181,8 +264,6 @@ const GoPrint = {
       .filter(([, v]) => v)
       .map(([lvl, v]) => `<div class="fact"><span class="fact-label">Level ${lvl}:</span> ${e(v)}</div>`)
       .join('');
-
-    const frayDice = GoUtils.getFrayDiceDisplay(c.level || 1, c.frayBonusDice);
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -334,12 +415,15 @@ const GoPrint = {
   .empty { color: #999; font-style: italic; font-size: .9rem; }
   .note  { font-size: .75rem; color: #777; margin-top: .2rem; }
   .footer { margin-top: 1.5rem; color: #bbb; font-size: .72rem; text-align: center; }
+  .apo-gained-row td { background: #e8f5e9 !important; font-weight: 700; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) { .three-col { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
 <div class="print-controls">
-  <h1>Godbound Toolkit – Character Summary</h1>
+  <h1>Godbound Toolkit – Character Sheet</h1>
   <button class="btn-ctrl btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
   <button class="btn-ctrl btn-close" onclick="window.close()">✕ Close</button>
 </div>
@@ -415,11 +499,11 @@ const GoPrint = {
   <div class="section-title">Combat &amp; Hit Points</div>
   <div class="stats-row">
     <div class="stat-box">
-      <div class="stat-val">${(c.hp || {}).max || '—'}</div>
+      <div class="stat-val">${hp.max || '—'}</div>
       <div class="stat-lbl">HP Max</div>
     </div>
     <div class="stat-box">
-      <div class="stat-val">${(c.hp || {}).current ?? '—'}</div>
+      <div class="stat-val">${hp.current ?? hp.max ?? '—'}</div>
       <div class="stat-lbl">HP Current</div>
     </div>
     <div class="stat-box">
@@ -427,8 +511,19 @@ const GoPrint = {
       <div class="stat-lbl">AC</div>
     </div>
     <div class="stat-box">
-      <div class="stat-val">${GoUtils.formatMod(c.attackBonus ?? 0)}</div>
-      <div class="stat-lbl">Atk Bonus</div>
+      <div class="stat-val">${GoUtils.formatMod(meleeAtk)}</div>
+      <div class="stat-lbl">Melee Atk</div>
+      <div class="stat-sub">Lvl + STR</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val">${GoUtils.formatMod(rangedAtk)}</div>
+      <div class="stat-lbl">Ranged Atk</div>
+      <div class="stat-sub">Lvl + DEX</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val">${GoUtils.formatMod(customAtk)}</div>
+      <div class="stat-lbl">Custom Atk</div>
+      <div class="stat-sub">Lvl + ${customAttr.toUpperCase()}</div>
     </div>
     <div class="stat-box">
       <div class="stat-val" style="font-size:.95rem">${e(frayDice)}</div>
@@ -439,28 +534,74 @@ const GoPrint = {
     Armour: ${e((c.armorType || 'none').charAt(0).toUpperCase() + (c.armorType || 'none').slice(1))}
     &nbsp;|&nbsp; Shield/Cloak: ${c.shieldOrCloak ? 'Yes' : 'No'}
     &nbsp;|&nbsp; Defence Attr: ${(c.defenseAttr || 'dex').toUpperCase()}
+    ${c.unarmedDamage ? `&nbsp;|&nbsp; Unarmed: ${e(c.unarmedDamage)}` : ''}
   </p>
 </div>
 
 <!-- ═══ DIVINE RESOURCES ══════════════════════════════════════════════ -->
 <div class="section">
   <div class="section-title">Divine Resources</div>
-  <div class="stats-row">
-    <div class="stat-box">
-      <div class="stat-val">${(c.effort || {}).total || 0}</div>
-      <div class="stat-lbl">Effort</div>
+  <div class="three-col">
+    <div>
+      <div class="label">Effort</div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val">${effort.total || 0}</div>
+          <div class="stat-lbl">Total</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${(effort.total || 0) - (effort.committedDay || 0) - (effort.committedScene || 0)}</div>
+          <div class="stat-lbl">Available</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${effort.committedScene || 0}</div>
+          <div class="stat-lbl">Cmt. Scene</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${effort.committedDay || 0}</div>
+          <div class="stat-lbl">Cmt. Day</div>
+        </div>
+      </div>
     </div>
-    <div class="stat-box">
-      <div class="stat-val">${(c.dominion || {}).total || 0}</div>
-      <div class="stat-lbl">Dominion</div>
+    <div>
+      <div class="label">Dominion</div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val">${dominion.total || 0}</div>
+          <div class="stat-lbl">Total</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${dominion.earned || 0}</div>
+          <div class="stat-lbl">Free</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${dominion.spent || 0}</div>
+          <div class="stat-lbl">Spent</div>
+        </div>
+      </div>
+      ${c.divineServant ? `<p class="note" style="margin-top:.3rem">Divine Servant${c.servantName ? ': ' + e(c.servantName) : ''}</p>` : ''}
     </div>
-    <div class="stat-box">
-      <div class="stat-val">${(c.influence || {}).max || 0}</div>
-      <div class="stat-lbl">Influence</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-val">${wealth.total || 0}</div>
-      <div class="stat-lbl">Wealth</div>
+    <div>
+      <div class="label">Influence &amp; Wealth</div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val">${influence.current || 0}&thinsp;/&thinsp;${influence.max || 0}</div>
+          <div class="stat-lbl">Influence</div>
+          <div class="stat-sub">Used / Max</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${wealth.total || 0}</div>
+          <div class="stat-lbl">Wealth Cache 1</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${wealth.free || 0}</div>
+          <div class="stat-lbl">Wealth Cache 2</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${wealth.cult || 0}</div>
+          <div class="stat-lbl">Cult Wealth</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -470,6 +611,28 @@ const GoPrint = {
   <div class="section-title">Words of Power</div>
   ${wordsHtml}
 </div>
+
+<!-- ═══ ARCANE ARTS ═══════════════════════════════════════════════════ -->
+${arcaneHtml}
+
+<!-- ═══ APOTHEOSIS GIFTS ══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Apotheosis Gifts</div>
+  <table>
+    <thead><tr><th>Lvl</th><th>Gift</th><th>Activation</th><th>Gained</th></tr></thead>
+    <tbody>${apoRows}</tbody>
+  </table>
+</div>
+
+<!-- ═══ SERVANTS &amp; MINIONS ═══════════════════════════════════════ -->
+${(c.servants || []).length ? `
+<div class="section">
+  <div class="section-title">Servants &amp; Minions</div>
+  <table>
+    <thead><tr><th>Name</th><th>HP</th><th>AC</th><th>Notes</th></tr></thead>
+    <tbody>${servantRows}</tbody>
+  </table>
+</div>` : ''}
 
 <!-- ═══ EQUIPMENT ═════════════════════════════════════════════════════ -->
 ${(c.weapons || []).length ? `

@@ -17,6 +17,7 @@ const GoApp = {
     GoCharacter.init();
     GoDataEditor.init();
     this._setupImportExport();
+    GoPrint.checkShareParam();
     this._restoreActiveTab();
   },
 
