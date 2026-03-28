@@ -9,10 +9,19 @@ const GoPrint = {
 
   /* ─── Public API ────────────────────────────────────────────────── */
 
-  /** Open a formatted character summary in a new window and trigger print. */
-  printCharacter(char) {
-    const html = this._buildSummaryHTML(char);
-    const win  = window.open('', '_blank', 'width=960,height=800,scrollbars=yes,resizable=yes');
+  /** Show a modal to choose between Summary and Full Sheet, then open the print window. */
+  async printCharacter(char) {
+    const mode = await this._showPrintModal();
+    if (!mode) return;
+    const html = mode === 'summary'
+      ? this._buildShortSummaryHTML(char)
+      : this._buildFullSheetHTML(char);
+    this._openPrintWindow(html);
+  },
+
+  /** Open a formatted print window without auto-triggering the print dialog. */
+  _openPrintWindow(html) {
+    const win = window.open('', '_blank', 'width=960,height=800,scrollbars=yes,resizable=yes');
     if (!win) {
       GoApp.toast('Pop-ups blocked – please allow pop-ups to print', 'error');
       return;
@@ -20,8 +29,71 @@ const GoPrint = {
     win.document.write(html);
     win.document.close();
     win.focus();
-    /* Small delay so styles render before the print dialog opens */
-    setTimeout(() => win.print(), 400);
+  },
+
+  /**
+   * Show a modal asking whether to print the Summary or Full Sheet.
+   * Returns a Promise that resolves to 'summary', 'full', or null (cancel).
+   */
+  _showPrintModal() {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'iex-overlay';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
+      overlay.setAttribute('aria-labelledby', 'print-modal-title');
+      overlay.innerHTML = `
+        <div class="iex-modal">
+          <h3 id="print-modal-title" class="iex-title">🖨️ Print Character Sheet</h3>
+          <p class="iex-body">Choose the format you would like to print:</p>
+          <ul class="iex-list">
+            <li>
+              <strong>Summary</strong> – a compact overview with key stats,
+              attributes, saves, combat values, divine resources, and a brief
+              list of Words of Power.
+            </li>
+            <li>
+              <strong>Full Sheet</strong> – the complete character sheet
+              including all Words of Power gifts, Arcane Arts, Apotheosis Gifts,
+              Servants, Equipment, Artifacts, Cult, and Notes.
+            </li>
+          </ul>
+          <div class="iex-actions">
+            <button class="btn-primary print-summary-btn">📋 Summary</button>
+            <button class="btn-secondary print-full-btn">📄 Full Sheet</button>
+            <button class="btn-ghost print-cancel-btn">Cancel</button>
+          </div>
+        </div>`;
+
+      document.body.appendChild(overlay);
+
+      const cleanup = result => {
+        document.removeEventListener('keydown', onKeyDown);
+        document.body.removeChild(overlay);
+        resolve(result);
+      };
+
+      const focusable = () => Array.from(overlay.querySelectorAll('button'));
+      const onKeyDown = e => {
+        if (e.key === 'Escape') { cleanup(null); return; }
+        if (e.key === 'Tab') {
+          const els   = focusable();
+          const first = els[0];
+          const last  = els[els.length - 1];
+          if (e.shiftKey ? document.activeElement === first : document.activeElement === last) {
+            e.preventDefault();
+            (e.shiftKey ? last : first).focus();
+          }
+        }
+      };
+      document.addEventListener('keydown', onKeyDown);
+      requestAnimationFrame(() => { const els = focusable(); if (els[0]) els[0].focus(); });
+
+      overlay.querySelector('.print-summary-btn').addEventListener('click', () => cleanup('summary'));
+      overlay.querySelector('.print-full-btn').addEventListener('click',    () => cleanup('full'));
+      overlay.querySelector('.print-cancel-btn').addEventListener('click',  () => cleanup(null));
+      overlay.addEventListener('click', e => { if (e.target === overlay) cleanup(null); });
+    });
   },
 
   /** Encode the active character as a URL-safe string and copy to clipboard. */
@@ -102,9 +174,295 @@ const GoPrint = {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   },
 
-  /* ─── HTML sheet builder ────────────────────────────────────────── */
+  /* ─── HTML sheet builders ───────────────────────────────────────── */
 
-  _buildSummaryHTML(c) {
+  /**
+   * Compact one-to-two-page summary: key stats only, no gift/ability details.
+   */
+  _buildShortSummaryHTML(c) {
+    const e        = s => this._esc(s);
+    const attrs    = c.attributes  || {};
+    const bonuses  = c.attrBonuses || {};
+    const hp       = c.hp          || {};
+    const effort   = c.effort      || {};
+    const dominion = c.dominion    || {};
+    const influence= c.influence   || {};
+    const wealth   = c.wealth      || {};
+
+    const attrFull = { str:'Strength', con:'Constitution', dex:'Dexterity',
+                       int:'Intelligence', wis:'Wisdom', cha:'Charisma' };
+
+    const computeMod = attr => {
+      const score = attrs[attr] || 10;
+      const bonus = bonuses[attr] || 0;
+      return GoUtils.getAttrMod(score) + bonus;
+    };
+
+    const level      = c.level || 1;
+    const meleeAtk   = level + computeMod('str');
+    const rangedAtk  = level + computeMod('dex');
+    const customAttr = c.customAttackAttr || 'str';
+    const customAtk  = level + computeMod(customAttr);
+    const frayDice   = GoUtils.getFrayDiceDisplay(level, c.frayBonusDice);
+
+    const attrRows = ['str','con','dex','int','wis','cha'].map(a => {
+      const score = attrs[a] || 10;
+      const bonus = bonuses[a] || 0;
+      const mod   = GoUtils.getAttrMod(score) + bonus;
+      const check = 21 - score;
+      return `<tr>
+        <td>${attrFull[a]}</td>
+        <td class="num">${score}</td>
+        <td class="num">${bonus >= 0 ? '+' + bonus : bonus}</td>
+        <td class="num">${check}</td>
+        <td class="num ${mod >= 0 ? 'pos' : 'neg'}">${GoUtils.formatMod(mod)}</td>
+      </tr>`;
+    }).join('');
+
+    /* Words of Power – names only */
+    const wordsList = (c.words || []).length
+      ? (c.words || []).map(w => {
+          const giftNames = (w.gifts || []).map(g => e(g.name)).join(', ');
+          return `<li><strong>${e(w.name)}</strong>${giftNames ? ': ' + giftNames : ''}</li>`;
+        }).join('')
+      : '<li class="empty">None</li>';
+
+    /* Level facts */
+    const levelFactsHtml = Object.entries(c.levelFacts || {})
+      .filter(([, v]) => v)
+      .map(([lvl, v]) => `<div class="fact"><span class="fact-label">Level ${lvl}:</span> ${e(v)}</div>`)
+      .join('');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${e(c.name)} – Summary Sheet</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 13px; }
+  body {
+    font-family: 'Georgia', serif;
+    color: #1a1a1a;
+    background: #fff;
+    padding: 1.2rem 1.8rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .print-controls {
+    display: flex;
+    gap: .75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .print-controls h1 { font-size: 1rem; color: #555; font-weight: 400; flex: 1; }
+  .btn-ctrl {
+    padding: .45rem 1.1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: .9rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .btn-print { background: #5a3e8c; color: #fff; }
+  .btn-print:hover { background: #7a5eb0; }
+  .btn-close { background: #777; color: #fff; }
+  .btn-close:hover { background: #555; }
+  @media print { .print-controls { display: none !important; } }
+  .char-header {
+    border-bottom: 3px solid #5a3e8c;
+    padding-bottom: .5rem;
+    margin-bottom: .8rem;
+  }
+  .char-name { font-size: 1.9rem; font-weight: 700; color: #3a1e6c; line-height: 1.1; }
+  .char-meta { display: flex; gap: 1.2rem; margin-top: .3rem; font-size: .9rem; color: #555; flex-wrap: wrap; }
+  .char-meta span strong { color: #1a1a1a; }
+  .section { margin-bottom: .9rem; page-break-inside: avoid; }
+  .section-title {
+    background: #5a3e8c;
+    color: #fff;
+    padding: .2rem .6rem;
+    font-size: .82rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    border-radius: 3px;
+    margin-bottom: .4rem;
+  }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .9rem; }
+  @media (max-width: 580px) { .two-col, .three-col { grid-template-columns: 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th {
+    background: #ede8f7;
+    color: #3a1e6c;
+    font-weight: 700;
+    text-align: left;
+    padding: .2rem .4rem;
+    border: 1px solid #c9b8e8;
+    font-size: .75rem;
+    text-transform: uppercase;
+  }
+  td { padding: .15rem .4rem; border: 1px solid #ddd; vertical-align: top; }
+  tr:nth-child(even) td { background: #faf8ff; }
+  td.num { text-align: center; font-variant-numeric: tabular-nums; }
+  td.pos { color: #1a6b2c; font-weight: 700; }
+  td.neg { color: #8b1a1a; font-weight: 700; }
+  .stats-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .stat-box {
+    background: #ede8f7;
+    border: 1px solid #c9b8e8;
+    border-radius: 4px;
+    padding: .25rem .55rem;
+    text-align: center;
+    min-width: 62px;
+  }
+  .stat-box .stat-val { font-size: 1.2rem; font-weight: 700; color: #3a1e6c; line-height: 1.1; }
+  .stat-box .stat-lbl { font-size: .65rem; text-transform: uppercase; color: #666; letter-spacing: .03em; }
+  .stat-box .stat-sub { font-size: .6rem; color: #999; }
+  .label {
+    font-weight: 700;
+    font-size: .75rem;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin: .3rem 0 .1rem;
+  }
+  .note  { font-size: .72rem; color: #777; margin-top: .2rem; }
+  .fact { margin-bottom: .25rem; font-size: .88rem; }
+  .fact-label { font-weight: 700; }
+  .text-block {
+    background: #faf9fe;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: .3rem .5rem;
+    font-size: .88rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  ul.words-list { list-style: disc; padding-left: 1.25rem; font-size: .88rem; }
+  ul.words-list li { margin-bottom: .2rem; }
+  .empty { color: #999; font-style: italic; }
+  .footer { margin-top: 1.2rem; color: #bbb; font-size: .7rem; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="print-controls">
+  <h1>Godbound Toolkit – Character Summary</h1>
+  <button class="btn-ctrl btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  <button class="btn-ctrl btn-close" onclick="window.close()">✕ Close</button>
+</div>
+
+<!-- ═══ HEADER ════════════════════════════════════════════════════════ -->
+<div class="char-header">
+  <div class="char-name">${e(c.name)}</div>
+  <div class="char-meta">
+    <span><strong>Level:</strong> ${c.level || 1}</span>
+    <span><strong>Experience:</strong> ${c.experience || 0}</span>
+    ${c.background ? `<span><strong>Background:</strong> ${e(c.background)}</span>` : ''}
+  </div>
+</div>
+
+<div class="two-col">
+  <!-- ── Facts ── -->
+  <div>
+    ${(c.origin || c.career || c.relationship || levelFactsHtml) ? `
+    <div class="section">
+      <div class="section-title">Facts</div>
+      ${c.origin       ? `<div class="fact"><span class="fact-label">Origin:</span> ${e(c.origin)}</div>` : ''}
+      ${c.career       ? `<div class="fact"><span class="fact-label">Career:</span> ${e(c.career)}</div>` : ''}
+      ${c.relationship ? `<div class="fact"><span class="fact-label">Relationship:</span> ${e(c.relationship)}</div>` : ''}
+      ${levelFactsHtml}
+    </div>` : ''}
+    ${c.goal ? `
+    <div class="section">
+      <div class="section-title">Goal</div>
+      <div class="text-block">${e(c.goal)}</div>
+    </div>` : ''}
+  </div>
+
+  <!-- ── Saves & Combat ── -->
+  <div>
+    <div class="section">
+      <div class="section-title">Saving Throws</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val">${(c.saves || {}).hardiness || '—'}</div><div class="stat-lbl">Hardiness</div><div class="stat-sub">STR/CON</div></div>
+        <div class="stat-box"><div class="stat-val">${(c.saves || {}).evasion   || '—'}</div><div class="stat-lbl">Evasion</div><div class="stat-sub">DEX/INT</div></div>
+        <div class="stat-box"><div class="stat-val">${(c.saves || {}).spirit    || '—'}</div><div class="stat-lbl">Spirit</div><div class="stat-sub">WIS/CHA</div></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Combat</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val">${hp.max || '—'}</div><div class="stat-lbl">HP Max</div></div>
+        <div class="stat-box"><div class="stat-val">${hp.current ?? hp.max ?? '—'}</div><div class="stat-lbl">HP Cur</div></div>
+        <div class="stat-box"><div class="stat-val">${c.ac ?? '—'}</div><div class="stat-lbl">AC</div></div>
+        <div class="stat-box"><div class="stat-val">${GoUtils.formatMod(meleeAtk)}</div><div class="stat-lbl">Melee</div><div class="stat-sub">Lvl+STR</div></div>
+        <div class="stat-box"><div class="stat-val">${GoUtils.formatMod(rangedAtk)}</div><div class="stat-lbl">Ranged</div><div class="stat-sub">Lvl+DEX</div></div>
+        <div class="stat-box"><div class="stat-val" style="font-size:.9rem">${e(frayDice)}</div><div class="stat-lbl">Fray</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ATTRIBUTES ════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Attributes</div>
+  <table>
+    <thead><tr><th>Attribute</th><th>Base</th><th>Bonus</th><th>Check</th><th>Mod</th></tr></thead>
+    <tbody>${attrRows}</tbody>
+  </table>
+  <p class="note">CHECK = 21 − Base &nbsp;|&nbsp; MOD from Godbound table</p>
+</div>
+
+<!-- ═══ DIVINE RESOURCES ══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Divine Resources</div>
+  <div class="three-col">
+    <div>
+      <div class="label">Effort</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val">${effort.total || 0}</div><div class="stat-lbl">Total</div></div>
+        <div class="stat-box"><div class="stat-val">${(effort.total || 0) - (effort.committedDay || 0) - (effort.committedScene || 0)}</div><div class="stat-lbl">Free</div></div>
+        <div class="stat-box"><div class="stat-val">${effort.committedScene || 0}</div><div class="stat-lbl">Scene</div></div>
+        <div class="stat-box"><div class="stat-val">${effort.committedDay || 0}</div><div class="stat-lbl">Day</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Dominion</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val">${dominion.total || 0}</div><div class="stat-lbl">Total</div></div>
+        <div class="stat-box"><div class="stat-val">${dominion.earned || 0}</div><div class="stat-lbl">Free</div></div>
+        <div class="stat-box"><div class="stat-val">${dominion.spent || 0}</div><div class="stat-lbl">Spent</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Influence &amp; Wealth</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val">${influence.current || 0}&thinsp;/&thinsp;${influence.max || 0}</div><div class="stat-lbl">Influence</div></div>
+        <div class="stat-box"><div class="stat-val">${wealth.total || 0}</div><div class="stat-lbl">Wealth Cache 1</div></div>
+        <div class="stat-box"><div class="stat-val">${wealth.free || 0}</div><div class="stat-lbl">Wealth Cache 2</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ WORDS OF POWER ════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Words of Power</div>
+  <ul class="words-list">${wordsList}</ul>
+</div>
+
+<p class="footer">Generated by Godbound Toolkit &nbsp;·&nbsp; ${new Date().toLocaleDateString()} &nbsp;·&nbsp; Summary Sheet</p>
+</body>
+</html>`;
+  },
+
+  /** Full character sheet – all powers, gifts, equipment, cult details, and notes. */
+  _buildFullSheetHTML(c) {
     const e       = s => this._esc(s);
     const cult    = c.cult    || {};
     const wealth  = c.wealth  || {};
@@ -269,7 +627,7 @@ const GoPrint = {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>${e(c.name)} – Godbound Character Sheet</title>
+<title>${e(c.name)} – Full Character Sheet</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { font-size: 13px; }
@@ -423,7 +781,7 @@ const GoPrint = {
 <body>
 
 <div class="print-controls">
-  <h1>Godbound Toolkit – Character Sheet</h1>
+  <h1>Godbound Toolkit – Full Character Sheet</h1>
   <button class="btn-ctrl btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
   <button class="btn-ctrl btn-close" onclick="window.close()">✕ Close</button>
 </div>
@@ -704,7 +1062,7 @@ ${c.notes ? `
   <div class="text-block">${e(c.notes)}</div>
 </div>` : ''}
 
-<p class="footer">Generated by Godbound Toolkit &nbsp;·&nbsp; ${new Date().toLocaleDateString()}</p>
+<p class="footer">Generated by Godbound Toolkit &nbsp;·&nbsp; ${new Date().toLocaleDateString()} &nbsp;·&nbsp; Full Character Sheet</p>
 
 </body>
 </html>`;
