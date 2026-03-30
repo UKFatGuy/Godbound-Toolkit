@@ -78,8 +78,10 @@ jobs:
 
           # Gracefully shut down before checking the result.
           kill "$SERVER_PID"
-          wait "$SERVER_PID" 2>/dev/null
-          EXIT_CODE=$?
+          # Use || to prevent bash -e from aborting when wait returns the
+          # expected non-zero SIGTERM exit code (143).
+          EXIT_CODE=0
+          wait "$SERVER_PID" 2>/dev/null || EXIT_CODE=$?
 
           # SIGTERM produces exit code 143 (128+15) — that is expected and fine.
           # Any other non-zero code indicates a crash.
