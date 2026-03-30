@@ -504,6 +504,9 @@ const GoPrint = {
                 const modNote = g.modifiesAttribute
                   ? ` <em style="font-size:.8em;color:#666">(${g.modType === 'score' ? 'Score' : 'Bonus'}: ${g.modValue >= 0 ? '+' + g.modValue : g.modValue} ${String(g.modAttribute || 'str').toUpperCase()})</em>`
                   : '';
+                const descRow = g.description
+                  ? `\n              <tr class="desc-row"><td colspan="6">${e(g.description)}</td></tr>`
+                  : '';
                 return `
               <tr>
                 <td>${e(g.name)}${modNote}</td>
@@ -512,15 +515,14 @@ const GoPrint = {
                 <td class="num">${g.smite ? '✓' : ''}</td>
                 <td>${e(g.effort || '')}</td>
                 <td class="num">${g.active ? '◉' : '○'}</td>
-                <td class="desc">${e(g.description || '')}</td>
-              </tr>`;
+              </tr>${descRow}`;
               }).join('')
-            : `<tr><td colspan="7" class="empty">No gifts</td></tr>`;
+            : `<tr><td colspan="6" class="empty">No gifts</td></tr>`;
           return `
           <div class="word-block">
             <div class="word-name">${e(w.name)}</div>
             <table>
-              <thead><tr><th>Gift</th><th>Type</th><th>Activation</th><th>Smite</th><th>Effort</th><th>Active</th><th>Description</th></tr></thead>
+              <thead><tr><th>Gift</th><th>Type</th><th>Activation</th><th>Smite</th><th>Effort</th><th>Active</th></tr></thead>
               <tbody>${giftsRows}</tbody>
             </table>
           </div>`;
@@ -706,8 +708,8 @@ const GoPrint = {
   td.num { text-align: center; font-variant-numeric: tabular-nums; }
   td.pos { color: #1a6b2c; font-weight: 700; }
   td.neg { color: #8b1a1a; font-weight: 700; }
-  td.desc { font-size: .82rem; color: #444; max-width: 200px; }
   td.empty { color: #999; font-style: italic; text-align: center; }
+  tr.desc-row td { font-size: .82rem; color: #444; border-top: none; padding-top: .1rem; background: #fdf9ff !important; font-style: italic; }
 
   /* ── Text blocks ── */
   .text-block {
