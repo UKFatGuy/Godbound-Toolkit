@@ -535,20 +535,24 @@ const GoPrint = {
       if (!items.length) return '';
       const blocksHtml = items.map(item => {
         const entriesRows = item.entries && item.entries.length
-          ? item.entries.map(en => `
+          ? item.entries.map(en => {
+              const descRow = en.description
+                ? `\n              <tr class="desc-row"><td colspan="4">${e(en.description)}</td></tr>`
+                : '';
+              return `
             <tr>
               <td>${e(en.name)}</td>
               <td>${e(en.activation || '')}</td>
               <td>${e(en.effort || '')}</td>
               <td class="num">${en.active ? '◉' : '○'}</td>
-              <td class="desc">${e(en.description || '')}</td>
-            </tr>`).join('')
-          : `<tr><td colspan="5" class="empty">No ${cfg.entryLabelPlural.toLowerCase()}</td></tr>`;
+            </tr>${descRow}`;
+            }).join('')
+          : `<tr><td colspan="4" class="empty">No ${cfg.entryLabelPlural.toLowerCase()}</td></tr>`;
         return `
         <div class="word-block">
           <div class="word-name">${e(item.name)}${item.notes ? `<span style="font-weight:400;font-size:.85em;color:#555"> — ${e(item.notes)}</span>` : ''}</div>
           <table>
-            <thead><tr><th>${cfg.entryLabel}</th><th>Activation</th><th>Effort</th><th>Active</th><th>Description</th></tr></thead>
+            <thead><tr><th>${cfg.entryLabel}</th><th>Activation</th><th>Effort</th><th>Active</th></tr></thead>
             <tbody>${entriesRows}</tbody>
           </table>
         </div>`;
