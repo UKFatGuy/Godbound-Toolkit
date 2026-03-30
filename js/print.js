@@ -405,6 +405,28 @@ const GoPrint = {
         <div class="stat-box"><div class="stat-val" style="font-size:.9rem">${e(frayDice)}</div><div class="stat-lbl">Fray</div></div>
       </div>
     </div>
+    <div class="section">
+      <div class="section-title">Divine Resources</div>
+      <div class="label">Effort</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val">${effort.total || 0}</div><div class="stat-lbl">Total</div></div>
+        <div class="stat-box"><div class="stat-val">${(effort.total || 0) - (effort.committedDay || 0) - (effort.committedScene || 0)}</div><div class="stat-lbl">Free</div></div>
+        <div class="stat-box"><div class="stat-val">${effort.committedScene || 0}</div><div class="stat-lbl">Scene</div></div>
+        <div class="stat-box"><div class="stat-val">${effort.committedDay || 0}</div><div class="stat-lbl">Day</div></div>
+      </div>
+      <div class="label">Dominion</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val">${dominion.total || 0}</div><div class="stat-lbl">Total</div></div>
+        <div class="stat-box"><div class="stat-val">${dominion.earned || 0}</div><div class="stat-lbl">Free</div></div>
+        <div class="stat-box"><div class="stat-val">${dominion.spent || 0}</div><div class="stat-lbl">Spent</div></div>
+      </div>
+      <div class="label">Influence &amp; Wealth</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val">${influence.current || 0}&thinsp;/&thinsp;${influence.max || 0}</div><div class="stat-lbl">Influence</div></div>
+        <div class="stat-box"><div class="stat-val">${wealth.total || 0}</div><div class="stat-lbl">Wealth Cache 1</div></div>
+        <div class="stat-box"><div class="stat-val">${wealth.free || 0}</div><div class="stat-lbl">Wealth Cache 2</div></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -416,38 +438,6 @@ const GoPrint = {
     <tbody>${attrRows}</tbody>
   </table>
   <p class="note">CHECK = 21 − Base &nbsp;|&nbsp; MOD from Godbound table</p>
-</div>
-
-<!-- ═══ DIVINE RESOURCES ══════════════════════════════════════════════ -->
-<div class="section">
-  <div class="section-title">Divine Resources</div>
-  <div class="three-col">
-    <div>
-      <div class="label">Effort</div>
-      <div class="stats-row">
-        <div class="stat-box"><div class="stat-val">${effort.total || 0}</div><div class="stat-lbl">Total</div></div>
-        <div class="stat-box"><div class="stat-val">${(effort.total || 0) - (effort.committedDay || 0) - (effort.committedScene || 0)}</div><div class="stat-lbl">Free</div></div>
-        <div class="stat-box"><div class="stat-val">${effort.committedScene || 0}</div><div class="stat-lbl">Scene</div></div>
-        <div class="stat-box"><div class="stat-val">${effort.committedDay || 0}</div><div class="stat-lbl">Day</div></div>
-      </div>
-    </div>
-    <div>
-      <div class="label">Dominion</div>
-      <div class="stats-row">
-        <div class="stat-box"><div class="stat-val">${dominion.total || 0}</div><div class="stat-lbl">Total</div></div>
-        <div class="stat-box"><div class="stat-val">${dominion.earned || 0}</div><div class="stat-lbl">Free</div></div>
-        <div class="stat-box"><div class="stat-val">${dominion.spent || 0}</div><div class="stat-lbl">Spent</div></div>
-      </div>
-    </div>
-    <div>
-      <div class="label">Influence &amp; Wealth</div>
-      <div class="stats-row">
-        <div class="stat-box"><div class="stat-val">${influence.current || 0}&thinsp;/&thinsp;${influence.max || 0}</div><div class="stat-lbl">Influence</div></div>
-        <div class="stat-box"><div class="stat-val">${wealth.total || 0}</div><div class="stat-lbl">Wealth Cache 1</div></div>
-        <div class="stat-box"><div class="stat-val">${wealth.free || 0}</div><div class="stat-lbl">Wealth Cache 2</div></div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- ═══ WORDS OF POWER ════════════════════════════════════════════════ -->
