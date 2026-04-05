@@ -50,7 +50,7 @@ const GoCharacter = {
       divineServant: false,
       servantName:   '',
       influence: { max: 0, current: 0, bonus: 0 },
-      wealth:    { total: 0, free: 0, cult: 0 },
+      wealth:    { total: 0, free: 0, cult: 0, shardsCurrent: 0, shardsSpent: 0 },
 
       apotheosis: {},
 
@@ -133,6 +133,8 @@ const GoCharacter = {
     /* Ensure wealth structure with cult cache */
     if (!char.wealth) char.wealth = { total: 0, free: 0, cult: 0 };
     if (char.wealth.cult === undefined) char.wealth.cult = 0;
+    if (char.wealth.shardsCurrent === undefined) char.wealth.shardsCurrent = 0;
+    if (char.wealth.shardsSpent   === undefined) char.wealth.shardsSpent   = 0;
 
     GoUtils.ARCANE_PRACTICES.forEach(cfg => {
       char[cfg.key] = this._normalizePracticeList(char[cfg.key]);
@@ -809,6 +811,14 @@ const GoCharacter = {
               <label class="form-label">Cult Wealth
                 <input type="number" class="input-sm" data-field="wealth-cult"
                   value="${wealth.cult || 0}" min="0">
+              </label>
+              <label class="form-label">Current Shards
+                <input type="number" class="input-sm" data-field="wealth-shards-current"
+                  value="${wealth.shardsCurrent || 0}" min="0">
+              </label>
+              <label class="form-label">Spent Shards
+                <input type="number" class="input-sm" data-field="wealth-shards-spent"
+                  value="${wealth.shardsSpent || 0}" min="0">
               </label>
             </div>
           </div>
@@ -2102,9 +2112,11 @@ const GoCharacter = {
       'influence-current':v => c.influence.current = parseInt(v,10)||0,
       'influence-max':    v => c.influence.max     = parseInt(v,10)||0,
       'influence-bonus':  v => c.influence.bonus   = parseInt(v,10)||0,
-      'wealth-total':     v => { if (!c.wealth) c.wealth = {}; c.wealth.total = parseInt(v,10)||0; },
-      'wealth-free':      v => { if (!c.wealth) c.wealth = {}; c.wealth.free  = parseInt(v,10)||0; },
-      'wealth-cult':      v => { if (!c.wealth) c.wealth = {}; c.wealth.cult  = parseInt(v,10)||0; },
+      'wealth-total':         v => { if (!c.wealth) c.wealth = {}; c.wealth.total         = parseInt(v,10)||0; },
+      'wealth-free':          v => { if (!c.wealth) c.wealth = {}; c.wealth.free          = parseInt(v,10)||0; },
+      'wealth-cult':          v => { if (!c.wealth) c.wealth = {}; c.wealth.cult          = parseInt(v,10)||0; },
+      'wealth-shards-current':v => { if (!c.wealth) c.wealth = {}; c.wealth.shardsCurrent = parseInt(v,10)||0; },
+      'wealth-shards-spent':  v => { if (!c.wealth) c.wealth = {}; c.wealth.shardsSpent   = parseInt(v,10)||0; },
       'cult-name':        v => { if (!c.cult) c.cult = {}; c.cult.name      = v; },
       'cult-demand':      v => { if (!c.cult) c.cult = {}; c.cult.demand    = parseInt(v,10)||0; },
       'cult-power':       v => { if (!c.cult) c.cult = {}; c.cult.power     = parseInt(v,10)||0; },

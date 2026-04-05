@@ -425,6 +425,8 @@ const GoPrint = {
         <div class="stat-box"><div class="stat-val">${influence.current || 0}&thinsp;/&thinsp;${influence.max || 0}</div><div class="stat-lbl">Influence</div></div>
         <div class="stat-box"><div class="stat-val">${wealth.total || 0}</div><div class="stat-lbl">Wealth Cache 1</div></div>
         <div class="stat-box"><div class="stat-val">${wealth.free || 0}</div><div class="stat-lbl">Wealth Cache 2</div></div>
+        <div class="stat-box"><div class="stat-val">${wealth.shardsCurrent || 0}</div><div class="stat-lbl">Current Shards</div></div>
+        <div class="stat-box"><div class="stat-val">${wealth.shardsSpent || 0}</div><div class="stat-lbl">Spent Shards</div></div>
       </div>
     </div>
   </div>
@@ -954,6 +956,14 @@ const GoPrint = {
         <div class="stat-box">
           <div class="stat-val">${wealth.cult || 0}</div>
           <div class="stat-lbl">Cult Wealth</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${wealth.shardsCurrent || 0}</div>
+          <div class="stat-lbl">Current Shards</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${wealth.shardsSpent || 0}</div>
+          <div class="stat-lbl">Spent Shards</div>
         </div>
       </div>
     </div>
